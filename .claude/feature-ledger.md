@@ -2427,12 +2427,12 @@ The panel is lazy-imported in `src/App.tsx` behind a `FeatureErrorBoundary`; `sr
 - summary: GPU-accelerated rendering with dual-layer context-loss recovery and a "Reset Display" action that repaints every terminal sharing the window's glyph atlas.
 - capabilities: `WebglAddon` when enabled; nothing clears the shared texture atlas unprompted; Reset Display clears the atlas and broadcasts to every other live WebGL renderer so siblings drop their model instead of drawing substituted glyphs (disposed and DOM-renderer terminals skipped, a throwing sibling tolerated); pnpm patch `patches/@xterm__addon-webgl@0.19.0.patch` backports a globally monotonic atlas page version so a merged page is re-uploaded; context loss detected via `addon.onContextLoss` and DOM `webglcontextlost` on every canvas, with a MutationObserver rebinding to replaced canvases; on loss the addon is disposed and xterm's DOM renderer takes over; `resetDisplay()` safe when WebGL is off or disposed
 - status: shipped-on
-- gate: `terminal.useWebGL = true` (read at creation — requires a terminal restart)
+- gate: `terminal.useWebGL = true` (read at creation — requires a terminal restart); never on Linux (`shouldUseWebglRenderer`), where WebKitGTK presented WebGL frames only on the next repaint (#1511), and the toggle is hidden there
 - surfaces: settings pane toggle; context-menu "Reset Display"
-- code: `src/components/Terminal/setupWebglRenderer.ts`, `src/components/Terminal/createTerminalInstance.ts`, `src/components/Terminal/resourceStack.ts`, `patches/@xterm__addon-webgl@0.19.0.patch`
+- code: `src/components/Terminal/setupWebglRenderer.ts`, `src/components/Terminal/createTerminalInstance.ts`, `src/components/Terminal/terminalOptions.ts`, `src/components/Terminal/resourceStack.ts`, `patches/@xterm__addon-webgl@0.19.0.patch`
 - rust: none
 - docs: `website/guide/settings.md` §"Terminal" (WebGL Renderer row); `website/guide/terminal.md` §"Context Menu" (Reset Display)
-- tests: `src/components/Terminal/createTerminalInstance.webgl.test.ts`, `src/components/Terminal/createTerminalInstance.test.ts`, `src/components/Terminal/createTerminalInstance.rollback.test.ts`, `src/components/Terminal/webglAtlasPageUpload.webkit.test.ts`, `src/components/Terminal/browserTier.smoke.webkit.test.ts`
+- tests: `src/components/Terminal/terminalOptions.test.ts`, `src/pages/settings/TerminalSettings.test.tsx`, `src/components/Terminal/createTerminalInstance.webgl.test.ts`, `src/components/Terminal/createTerminalInstance.test.ts`, `src/components/Terminal/createTerminalInstance.rollback.test.ts`, `src/components/Terminal/webglAtlasPageUpload.webkit.test.ts`, `src/components/Terminal/browserTier.smoke.webkit.test.ts`
 - notes: The broadcast is redundant once a stable `@xterm/addon-webgl` carries upstream `0b1c0b5c`; the patch is keyed to 0.19.0 so an addon bump fails `pnpm install` until it is re-evaluated. WebGL constructor failure is `v8 ignore`d. Construction is transactional via `resourceStack.ts`.
 
 ### Terminal theming and mono font
