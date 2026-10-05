@@ -66,6 +66,8 @@ When the terminal is focused, `Mod + =` / `-` / `0` zoom the **terminal** font (
 
 Prompt navigation (`Mod + ↑` / `Mod + ↓`) requires shell integration — see [Shell integration](#shell-integration) below.
 
+**Linux:** `Ctrl` + a letter goes to the shell, so readline keys such as `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` and `Ctrl + W` work as in any Linux terminal. The terminal's own letter shortcuts move to `Ctrl + Shift`: `Ctrl + Shift + F` searches, `Ctrl + Shift + K` clears, `Ctrl + Shift + A` selects all, and `Ctrl + Shift + C` / `Ctrl + Shift + V` copy and paste. `Ctrl + C` still copies a selection (otherwise it sends SIGINT) and `Ctrl + V` still pastes; `Ctrl + Insert` / `Shift + Insert` also copy and paste.
+
 ::: tip
 `Mod + C` without a text selection sends SIGINT to the running process — the same as pressing Ctrl+C in a regular terminal.
 :::

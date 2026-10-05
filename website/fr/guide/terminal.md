@@ -66,6 +66,8 @@ Lorsque le terminal a le focus, `Mod + =` / `-` / `0` agrandissent ou réduisent
 
 La navigation entre les invites (`Mod + ↑` / `Mod + ↓`) nécessite l'intégration du shell — voir [Intégration du shell](#integration-du-shell) ci-dessous.
 
+**Linux :** `Ctrl` + une lettre va au shell, donc les touches readline comme `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` et `Ctrl + W` fonctionnent comme dans tout terminal Linux. Les raccourcis à lettre propres au terminal passent sur `Ctrl + Shift` : `Ctrl + Shift + F` recherche, `Ctrl + Shift + K` efface, `Ctrl + Shift + A` sélectionne tout, et `Ctrl + Shift + C` / `Ctrl + Shift + V` copient et collent. `Ctrl + C` copie toujours une sélection (sinon il envoie SIGINT) et `Ctrl + V` colle toujours ; `Ctrl + Insert` / `Shift + Insert` copient et collent aussi.
+
 ::: tip
 `Mod + C` sans sélection de texte envoie SIGINT au processus en cours d'exécution — identique à appuyer sur Ctrl+C dans un terminal ordinaire.
 :::

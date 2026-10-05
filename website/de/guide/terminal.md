@@ -66,6 +66,8 @@ Wenn das Terminal fokussiert ist, zoomen `Mod + =` / `-` / `0` die **Terminal**-
 
 Die Prompt-Navigation (`Mod + ↑` / `Mod + ↓`) erfordert Shell-Integration — siehe [Shell-Integration](#shell-integration) weiter unten.
 
+**Linux:** `Ctrl` + Buchstabe geht an die Shell, sodass Readline-Tasten wie `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` und `Ctrl + W` wie in jedem Linux-Terminal funktionieren. Die eigenen Buchstaben-Kürzel des Terminals wandern auf `Ctrl + Shift`: `Ctrl + Shift + F` sucht, `Ctrl + Shift + K` leert, `Ctrl + Shift + A` wählt alles aus, und `Ctrl + Shift + C` / `Ctrl + Shift + V` kopieren und fügen ein. `Ctrl + C` kopiert weiterhin eine Auswahl (sonst sendet es SIGINT) und `Ctrl + V` fügt weiterhin ein; `Ctrl + Insert` / `Shift + Insert` kopieren und fügen ebenfalls ein.
+
 ::: tip
 `Mod + C` ohne Textauswahl sendet SIGINT an den laufenden Prozess — dasselbe wie Strg+C in einem regulären Terminal.
 :::

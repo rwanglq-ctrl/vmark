@@ -7,7 +7,12 @@
  * Key decisions:
  *   - Cmd+C with selection → copy to clipboard; without selection → pass through
  *     for SIGINT (Ctrl+C), maintaining standard terminal behavior.
- *   - Cmd+V → paste from clipboard directly into PTY (not xterm buffer).
+ *   - Cmd+V → paste through xterm, preserving bracketed-paste boundaries.
+ *   - Linux follows Omarchy: Ctrl+letter belongs to the shell except Ctrl+C
+ *     (copy with a selection, else SIGINT) and Ctrl+V (paste), which are what
+ *     Omarchy's Super+C / Super+V send to a non-terminal window. Ctrl+Insert /
+ *     Shift+Insert copy/paste like Omarchy's terminals; Ctrl+Shift+C/V/F also
+ *     copy/paste/search.
  *   - Cmd+K → clear terminal scrollback and viewport.
  *   - The configured panel chords — Toggle Terminal (default Ctrl+`) and Focus
  *     Terminal (default Ctrl+Shift+`) → act and fully consume the event, so the
@@ -41,22 +46,22 @@
  *
  * @coordinates-with createTerminalInstance.ts — attached via term.attachCustomKeyEventHandler
  * @coordinates-with setupImeCompositionGate.ts — provides the `isComposing` callback
+ * @coordinates-with terminalClipboard.ts — copy/paste actions behind the clipboard chords
  * @module components/Terminal/terminalKeyHandler
  */
 import type { IPty } from "@/lib/pty";
-import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { Terminal } from "@xterm/xterm";
 import { useTerminalStore } from "@/stores/terminalStore";
 import { useSettingsStore, useShortcutsStore } from "@/stores/settingsStore";
 import { initialState as settingsDefaults } from "@/stores/settingsStore/defaults";
 import { isImeKeyEvent } from "@/utils/imeGuard";
 import { isMacPlatform, matchesShortcutEvent } from "@/utils/shortcutMatch";
-import { clipboardWarn } from "@/utils/debug";
-import { errorMessage } from "@/utils/errorMessage";
+import { getRuntimePlatform } from "@/utils/platform";
 import { requestToggleTerminal, toggleTerminalFocus } from "@/services/terminal/terminalGate";
 import { getVisibleTerminalSessions } from "@/services/terminal/visibleTerminalSessions";
 import { getCurrentWindowLabel } from "@/services/persistence/workspaceStorage";
 import { handleReadlineNavKey } from "./terminalReadlineKeys";
+import { createTerminalClipboard } from "./terminalClipboard";
 
 /** Terminal font-zoom step and reset value. The reset target is the store's
  *  OWN default (audit 20260831 #36 — a restated literal would silently keep
@@ -105,6 +110,8 @@ export function createTerminalKeyHandler(
   ptyRef: React.RefObject<IPty | null>,
   callbacks: KeyHandlerCallbacks,
 ): (event: KeyboardEvent) => boolean {
+  const { copySelection, pasteClipboard } = createTerminalClipboard(term);
+
   return (event: KeyboardEvent): boolean => {
     if (event.type !== "keydown") return true;
 
@@ -162,12 +169,23 @@ export function createTerminalKeyHandler(
     // below. See terminalReadlineKeys.ts.
     if (handleReadlineNavKey(event, ptyRef)) return false;
 
-    // On macOS, Ctrl is a shell/readline modifier (Ctrl+A line-start, Ctrl+K
-    // kill-line, Ctrl+R, Ctrl+W, …) — only Cmd triggers VMark host shortcuts.
-    // Let Ctrl-only combos pass straight through to the PTY so those keys keep
-    // working; Cmd combos still match below. (Windows/Linux keep Ctrl as the
-    // host modifier — pre-existing behavior.)
+    const linux = getRuntimePlatform() === "linux";
+    // Omarchy's terminals copy with Ctrl+Insert and paste with Shift+Insert.
+    // Consume both so xterm never sends their escape sequences to the shell.
+    if (linux && event.key === "Insert" && !event.metaKey && !event.altKey
+      && event.ctrlKey !== event.shiftKey) {
+      event.preventDefault();
+      if (event.ctrlKey) copySelection();
+      else pasteClipboard();
+      return false;
+    }
+
+    // Preserve readline on macOS and Linux. On Linux, Ctrl+C and Ctrl+V stay
+    // with VMark because Omarchy's Super+C / Super+V arrive as exactly those
+    // chords; Ctrl+C still interrupts when nothing is selected.
     if (isMacPlatform() && event.ctrlKey && !event.metaKey) return true;
+    if (linux && event.ctrlKey && !event.metaKey && !event.shiftKey
+      && /^[abd-uw-z]$/i.test(event.key)) return true;
 
     const isMod = event.metaKey || event.ctrlKey;
     if (!isMod) return true;
@@ -185,38 +203,23 @@ export function createTerminalKeyHandler(
       return false;
     }
 
-    if (event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "c") {
-      // macOS: Cmd+C handles copy, so Ctrl+C should always pass through for SIGINT.
-      // Windows/Linux: Ctrl+C should copy if there is a selection, otherwise pass through for SIGINT.
-      if (isMacPlatform()) return true;
-      if (!term.hasSelection()) return true;
-    }
-
     switch (event.key.toLowerCase()) {
       case "c": {
-        if (term.hasSelection()) {
-          writeText(term.getSelection().trimEnd()).catch((error: unknown) => {
-            clipboardWarn("Clipboard write failed:", errorMessage(error));
-          });
-          term.clearSelection();
+        if (copySelection()) {
+          event.preventDefault();
           return false;
         }
-        // No selection — pass through for SIGINT
+        if (linux && event.ctrlKey && event.shiftKey) {
+          event.preventDefault();
+          return false;
+        }
         return true;
       }
       case "v": {
         // Prevent the browser's native paste on xterm's hidden textarea,
         // which would cause a second write to PTY (double-paste bug).
         event.preventDefault();
-        // Route through term.paste so xterm applies bracketed-paste wrapping
-        // when the app enabled it — multiline paste won't auto-execute (G2).
-        readText().then((text) => {
-          if (text) {
-            term.paste(text);
-          }
-        }).catch((error: unknown) => {
-          clipboardWarn("Clipboard read failed:", errorMessage(error));
-        });
+        pasteClipboard();
         return false;
       }
       case "k": {
@@ -224,11 +227,9 @@ export function createTerminalKeyHandler(
         return false;
       }
       case "f": {
-        // Terminal search is plain Cmd/Ctrl+F only. Cmd/Ctrl+Shift+F is the
-        // "Format CJK Selection" accelerator and Alt variants belong to other
-        // menu commands — let those fall through (return true, no preventDefault)
-        // so their native accelerators fire instead of opening terminal search.
-        if (event.shiftKey || event.altKey) return true;
+        // Linux uses Ctrl+Shift+F so Ctrl+F remains readline forward-char.
+        // Other platforms keep plain Cmd/Ctrl+F; Alt variants pass through.
+        if ((!linux && event.shiftKey) || event.altKey) return true;
         // preventDefault suppresses the native Edit-menu "Find" accelerator
         // (CmdOrCtrl+F). Without it, the accelerator ALSO fires and opens the
         // editor FindBar, so the terminal search appeared "not wired".

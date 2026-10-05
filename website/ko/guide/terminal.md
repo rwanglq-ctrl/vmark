@@ -66,6 +66,8 @@ VMark에는 에디터를 떠나지 않고 명령을 실행할 수 있는 내장 
 
 프롬프트 이동(`Mod + ↑` / `Mod + ↓`)에는 셸 통합이 필요합니다 — 아래 [셸 통합](#셸-통합)을 참조하세요.
 
+**Linux:** `Ctrl` + 문자 키는 셸로 전달되므로 `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U`, `Ctrl + W` 같은 readline 키를 다른 Linux 터미널처럼 사용할 수 있습니다. 터미널 자체의 문자 단축키는 `Ctrl + Shift`로 옮겨집니다: `Ctrl + Shift + F` 검색, `Ctrl + Shift + K` 지우기, `Ctrl + Shift + A` 전체 선택, `Ctrl + Shift + C` / `Ctrl + Shift + V` 복사와 붙여넣기. `Ctrl + C`는 선택 영역이 있으면 복사하고(없으면 SIGINT 전송) `Ctrl + V`는 그대로 붙여넣습니다. `Ctrl + Insert` / `Shift + Insert`로도 복사와 붙여넣기를 할 수 있습니다.
+
 ::: tip
 선택 없이 `Mod + C`를 사용하면 실행 중인 프로세스에 SIGINT를 보냅니다 — 일반 터미널에서 Ctrl+C를 누르는 것과 동일합니다.
 :::

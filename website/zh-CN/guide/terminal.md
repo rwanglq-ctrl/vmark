@@ -66,6 +66,8 @@ VMark 内置终端面板，让你无需离开编辑器即可执行命令。
 
 提示符跳转（`Mod + ↑` / `Mod + ↓`）需要 Shell 集成——参见下文的 [Shell 集成](#shell-集成)。
 
+**Linux：** `Ctrl` + 字母会交给 shell，因此 `Ctrl + A`、`Ctrl + E`、`Ctrl + K`、`Ctrl + F`、`Ctrl + U`、`Ctrl + W` 等 readline 按键与其他 Linux 终端一样可用。终端自身的字母快捷键改为 `Ctrl + Shift`：`Ctrl + Shift + F` 搜索，`Ctrl + Shift + K` 清屏，`Ctrl + Shift + A` 全选，`Ctrl + Shift + C` / `Ctrl + Shift + V` 复制和粘贴。`Ctrl + C` 仍会复制选中内容（无选中内容时发送 SIGINT），`Ctrl + V` 仍会粘贴；`Ctrl + Insert` / `Shift + Insert` 同样可以复制和粘贴。
+
 ::: tip
 无选中内容时 `Mod + C` 会向运行中的进程发送 SIGINT——与在普通终端中按 Ctrl+C 相同。
 :::

@@ -66,6 +66,8 @@ Quando o terminal está em foco, `Mod + =` / `-` / `0` ajustam o zoom da fonte d
 
 A navegação entre prompts (`Mod + ↑` / `Mod + ↓`) requer a integração com o shell — veja [Integração com o shell](#integracao-com-o-shell) abaixo.
 
+**Linux:** `Ctrl` + uma letra vai para o shell, então teclas do readline como `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` e `Ctrl + W` funcionam como em qualquer terminal Linux. Os atalhos de letra do próprio terminal passam para `Ctrl + Shift`: `Ctrl + Shift + F` pesquisa, `Ctrl + Shift + K` limpa, `Ctrl + Shift + A` seleciona tudo, e `Ctrl + Shift + C` / `Ctrl + Shift + V` copiam e colam. `Ctrl + C` continua copiando uma seleção (sem seleção, envia SIGINT) e `Ctrl + V` continua colando; `Ctrl + Insert` / `Shift + Insert` também copiam e colam.
+
 ::: tip
 `Mod + C` sem uma seleção de texto envia SIGINT ao processo em execução — o mesmo que pressionar Ctrl+C em um terminal regular.
 :::

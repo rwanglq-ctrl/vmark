@@ -66,6 +66,8 @@ VMark 內建終端機面板，讓你無需離開編輯器即可執行指令。
 
 提示字元導覽（`Mod + ↑` / `Mod + ↓`）需要 shell 整合——請見下方的 [Shell 整合](#shell-整合)。
 
+**Linux：** `Ctrl` + 字母會交給 shell，因此 `Ctrl + A`、`Ctrl + E`、`Ctrl + K`、`Ctrl + F`、`Ctrl + U`、`Ctrl + W` 等 readline 按鍵與其他 Linux 終端機一樣可用。終端機本身的字母快捷鍵改為 `Ctrl + Shift`：`Ctrl + Shift + F` 搜尋，`Ctrl + Shift + K` 清除畫面，`Ctrl + Shift + A` 全選，`Ctrl + Shift + C` / `Ctrl + Shift + V` 複製和貼上。`Ctrl + C` 仍會複製選取內容（無選取時傳送 SIGINT），`Ctrl + V` 仍會貼上；`Ctrl + Insert` / `Shift + Insert` 同樣可以複製和貼上。
+
 ::: tip
 `Mod + C` 在沒有選取範圍時，會向正在執行的程序傳送 SIGINT——與在一般終端機中按 Ctrl+C 相同。
 :::

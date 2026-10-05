@@ -66,6 +66,8 @@ VMark にはエディタを離れずにコマンドを実行できる組み込�
 
 プロンプト間の移動（`Mod + ↑` / `Mod + ↓`）にはシェル統合が必要です——後述の[シェル統合](#シェル統合)を参照してください。
 
+**Linux：** `Ctrl` + 英字キーはシェルに渡されるため、`Ctrl + A`、`Ctrl + E`、`Ctrl + K`、`Ctrl + F`、`Ctrl + U`、`Ctrl + W` などの readline キーは他の Linux ターミナルと同じように使えます。ターミナル独自の英字ショートカットは `Ctrl + Shift` に移ります：`Ctrl + Shift + F` で検索、`Ctrl + Shift + K` でクリア、`Ctrl + Shift + A` で全選択、`Ctrl + Shift + C` / `Ctrl + Shift + V` でコピーと貼り付け。`Ctrl + C` は選択があればコピーし（なければ SIGINT を送信）、`Ctrl + V` は貼り付けのままです。`Ctrl + Insert` / `Shift + Insert` でもコピーと貼り付けができます。
+
 ::: tip
 テキスト選択なしの `Mod + C` は実行中のプロセスに SIGINT を送信します——通常のターミナルで Ctrl+C を押すのと同じです。
 :::

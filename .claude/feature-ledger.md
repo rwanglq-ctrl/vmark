@@ -2373,24 +2373,24 @@ The panel is lazy-imported in `src/App.tsx` behind a `FeatureErrorBoundary`; `sr
 - status: shipped-on
 - gate: `terminal.osc52Clipboard = true` (read at creation → new sessions only); `terminal.copyOnSelect = false`
 - surfaces: settings pane toggles; keyboard; context menu; automatic (OSC 52)
-- code: `src/components/Terminal/setupOsc52.ts`, `src/components/Terminal/setupCopyOnSelect.ts`, `src/components/Terminal/terminalKeyHandler.ts`
+- code: `src/components/Terminal/setupOsc52.ts`, `src/components/Terminal/setupCopyOnSelect.ts`, `src/components/Terminal/terminalKeyHandler.ts`, `src/components/Terminal/terminalClipboard.ts`
 - rust: none (tauri-plugin-clipboard-manager)
 - docs: `website/guide/terminal.md` §"Remote clipboard (OSC 52)"; `website/guide/settings.md` §"Terminal" (Remote Clipboard row)
-- tests: `src/components/Terminal/setupOsc52.test.ts`, `src/components/Terminal/setupCopyOnSelect.test.ts`, `src/components/Terminal/terminalKeyHandler.test.ts`, `src/pages/settings/__tests__/terminalDocRanges.test.ts` (OSC 52 default and persist sanitiser)
+- tests: `src/components/Terminal/setupOsc52.test.ts`, `src/components/Terminal/setupCopyOnSelect.test.ts`, `src/components/Terminal/terminalKeyHandler.test.ts`, `src/components/Terminal/terminalKeyHandler.linux.test.ts`, `src/pages/settings/__tests__/terminalDocRanges.test.ts` (OSC 52 default and persist sanitiser)
 - notes: Read denial matches the iTerm2/VS Code posture and is asserted directly.
 
 ### Terminal keyboard handling
 - id: terminal-keys
 - feature: Integrated terminal
 - summary: A custom xterm key handler that owns host shortcuts inside the terminal without stealing shell keys.
-- capabilities: the configured Toggle Terminal and Focus Terminal chords acted on and fully consumed; `Mod+C/V/K/A`; `Mod+1..5` switches within the visible session population; `Mod+F` search; `Mod+=`/`-`/`0` zoom the terminal font in 2 px steps (Alt variants fall through); `Shift+Enter` emits CSI-u `\x1b[13;2u`; macOS readline chords Option+←/→ → `\x1bb`/`\x1bf`, Cmd+←/→ → `^A`/`^E`, Cmd+Backspace → `^U`; on macOS Ctrl-only combos pass straight through; keyCode-229 IME keydowns consumed; `Mod+↑/↓` prompt navigation
+- capabilities: the configured Toggle Terminal and Focus Terminal chords acted on and fully consumed; `Mod+C/V/K/A`; on Linux plain `Ctrl`+letter goes to the shell except `Ctrl+C` (copy with a selection, else SIGINT) and `Ctrl+V` (paste), the letter shortcuts move to `Ctrl+Shift` (C/V/F/K/A), and `Ctrl+Insert`/`Shift+Insert` copy/paste; `Mod+1..5` switches within the visible session population; `Mod+F` search; `Mod+=`/`-`/`0` zoom the terminal font in 2 px steps (Alt variants fall through); `Shift+Enter` emits CSI-u `\x1b[13;2u`; macOS readline chords Option+←/→ → `\x1bb`/`\x1bf`, Cmd+←/→ → `^A`/`^E`, Cmd+Backspace → `^U`; on macOS Ctrl-only combos pass straight through; keyCode-229 IME keydowns consumed; `Mod+↑/↓` prompt navigation
 - status: shipped-on
 - gate: always on; `toggleTerminal` and `focusTerminal` are user-rebindable
 - surfaces: keyboard inside terminal focus; keybinding scope `terminal` (resolved from `TERMINAL_SURFACE_SELECTOR`)
 - code: `src/components/Terminal/terminalKeyHandler.ts`, `src/components/Terminal/terminalReadlineKeys.ts`, `src/services/keybinding/bindingContext.ts`, `src/utils/terminalSurface.ts`, `src/stores/settingsStore/shortcutDefinitions.ts`, `src/services/keybinding/keybindingDefinitions.ts`
 - rust: none
 - docs: `website/guide/terminal.md` §"Keyboard Shortcuts"; `website/guide/shortcuts.md` §"Terminal" (every chord, including zoom, `Shift+Enter` and the macOS readline table)
-- tests: `src/components/Terminal/terminalKeyHandler.test.ts`, `src/components/Terminal/terminalKeyHandler.ime.test.ts`, `src/components/Terminal/terminalKeyHandler.scope.test.ts`, `src/components/Terminal/terminalKeyHandler.focus.test.ts`, `src/components/Terminal/terminalReadlineKeys.test.ts`, `src/services/keybinding/keybindingDefinitions.test.ts`
+- tests: `src/components/Terminal/terminalKeyHandler.test.ts`, `src/components/Terminal/terminalKeyHandler.linux.test.ts`, `src/components/Terminal/terminalKeyHandler.ime.test.ts`, `src/components/Terminal/terminalKeyHandler.scope.test.ts`, `src/components/Terminal/terminalKeyHandler.focus.test.ts`, `src/components/Terminal/terminalReadlineKeys.test.ts`, `src/services/keybinding/keybindingDefinitions.test.ts`
 - notes: The readline chords are macOS-only. `toggleTerminal` is the one binding with `suppressInInput: false`. Option+Backspace is deliberately unhandled (zsh already binds `\e^?`).
 
 ### IME composition gate (Channel Ownership)
