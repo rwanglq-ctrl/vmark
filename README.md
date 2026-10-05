@@ -14,7 +14,7 @@
 |---|---|
 | 外观跟随系统 | 打开「跟随系统外观」后，在 Linux 上读取当前 Omarchy 主题配色、GTK 界面字体和 Foot 终端字体，统一应用到编辑器、设置页、原生 GTK 菜单和所有终端会话；切换主题或字体时实时生效。字号按点数换算为 CSS 像素（14 pt = 18.67 px）。 |
 | 终端输入顺序 | 每个终端会话只保留一个在途写入请求，期间到达的输入合并成一批按序发送。修复快速打字时字符乱序（上游 [#1507](https://github.com/xiaolai/vmark/issues/1507)）。 |
-| 终端回显延迟 | Linux 上终端不再加载 xterm 的 WebGL 渲染器。WebKitGTK 下 WebGL 画面要等下一次重绘才显示，导致刚输入的字符总是晚一个按键才出现。改用 DOM 渲染后约 0.1 秒内显示。 |
+| 终端回显延迟 | Linux 上终端不再加载 xterm 的 WebGL 渲染器。WebKitGTK 下 WebGL 画面要等下一次重绘才显示，导致刚输入的字符总是晚一个按键才出现。改用 DOM 渲染后约 0.1 秒内显示（上游 [#1511](https://github.com/xiaolai/vmark/issues/1511)）。 |
 | 终端快捷键 | 按 Omarchy 习惯调整（上游 [#1508](https://github.com/xiaolai/vmark/issues/1508)），见下表。 |
 
 ### 终端快捷键（Linux）
@@ -44,7 +44,7 @@ pnpm tauri build --no-bundle
 
 ### 与上游的关系
 
-- 终端输入顺序和快捷键两项修复已作为独立 PR 提交上游；合并后本分支会跟进上游版本。
+- 三项终端修复已分别作为独立 PR 提交上游：输入顺序 [#1509](https://github.com/xiaolai/vmark/pull/1509)、Linux 快捷键 [#1510](https://github.com/xiaolai/vmark/pull/1510)、Linux 改用 DOM 渲染 [#1512](https://github.com/xiaolai/vmark/pull/1512)。合并后本分支会跟进上游版本。
 - Omarchy 外观适配是针对 Omarchy 桌面的定制，只保留在本分支。
 
 ---
