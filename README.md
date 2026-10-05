@@ -1,5 +1,55 @@
 # VMark
 
+> [!NOTE]
+> **这是 [xiaolai/vmark](https://github.com/xiaolai/vmark) 的 Omarchy / Linux 适配分支（`omarchy-linux`）。**
+> 上游的原始说明见下方英文部分；本节只说明这个 fork 的改动。
+
+## 中文说明：Omarchy / Linux 适配
+
+本分支基于上游 **v0.9.92**，面向 [Omarchy](https://omarchy.org/)（Arch Linux + Hyprland）桌面，在 Linux ARM64 上日常使用和验证。
+
+### 改了什么
+
+| 方面 | 改动 |
+|---|---|
+| 外观跟随系统 | 打开「跟随系统外观」后，在 Linux 上读取当前 Omarchy 主题配色、GTK 界面字体和 Foot 终端字体，统一应用到编辑器、设置页、原生 GTK 菜单和所有终端会话；切换主题或字体时实时生效。字号按点数换算为 CSS 像素（14 pt = 18.67 px）。 |
+| 终端输入顺序 | 每个终端会话只保留一个在途写入请求，期间到达的输入合并成一批按序发送。修复快速打字时字符乱序（上游 [#1507](https://github.com/xiaolai/vmark/issues/1507)）。 |
+| 终端回显延迟 | Linux 上终端不再加载 xterm 的 WebGL 渲染器。WebKitGTK 下 WebGL 画面要等下一次重绘才显示，导致刚输入的字符总是晚一个按键才出现。改用 DOM 渲染后约 0.1 秒内显示。 |
+| 终端快捷键 | 按 Omarchy 习惯调整（上游 [#1508](https://github.com/xiaolai/vmark/issues/1508)），见下表。 |
+
+### 终端快捷键（Linux）
+
+| 按键 | 作用 |
+|---|---|
+| `Super + C` / `Ctrl + C` | 有选中文字时复制，否则发送中断（SIGINT） |
+| `Super + V` / `Ctrl + V` | 粘贴 |
+| `Ctrl + Insert` / `Shift + Insert` | 复制 / 粘贴（与 Omarchy 自带终端一致） |
+| `Ctrl + Shift + C` / `V` / `F` | 复制 / 粘贴 / 终端内搜索 |
+| `Ctrl + A` / `E` / `K` / `U` / `W` / `F` / `R` 等 | 直接交给 shell（readline 行编辑） |
+
+Omarchy 的 `Super + C` / `Super + V` 对非终端窗口发送的正是 `Ctrl + C` / `Ctrl + V`，所以在 VMark 终端里也能用统一的复制粘贴键。
+
+### 从源码编译（Linux）
+
+```sh
+git clone -b omarchy-linux https://github.com/rwanglq-ctrl/vmark.git
+cd vmark
+pnpm install --frozen-lockfile
+pnpm --dir server/mcp build:sidecar   # Tauri 编译前需要先生成 MCP 侧车程序
+pnpm tauri build --no-bundle
+# 产物：src-tauri/target/release/vmark
+```
+
+需要 Node.js、pnpm、Rust 工具链以及 WebKitGTK 4.1 开发包。内存较小的 ARM64 机器可加 `CARGO_BUILD_JOBS=1` 并追加 `-- --config profile.release.package.vmark.codegen-units=16` 降低编译峰值内存。
+
+### 与上游的关系
+
+- 终端输入顺序和快捷键两项修复已作为独立 PR 提交上游；合并后本分支会跟进上游版本。
+- Omarchy 外观适配是针对 Omarchy 桌面的定制，只保留在本分支。
+
+---
+
+
 **The Plain-Text Workspace Where Humans and AI Collaborate**
 
 Free. Local-first. Format-aware.
