@@ -267,7 +267,15 @@ fn read_roots(capability: &Value) -> Vec<String> {
 fn the_asset_protocol_reaches_what_document_windows_can_read() {
     let conf = parse(TAURI_CONF);
     assert_eq!(conf["app"]["security"]["assetProtocol"]["enable"], true);
-    assert_eq!(asset_scope(&conf), read_roots(&parse(DEFAULT_CAPABILITY)));
+    // The system appearance reader also runs in Settings, which has no fs
+    // plugin permission. Grant exactly its two files through the asset scope.
+    let mut expected = read_roots(&parse(DEFAULT_CAPABILITY));
+    expected.extend([
+        "$HOME/.config/foot/foot.ini".to_owned(),
+        "$HOME/.local/state/omarchy/current/theme/colors.toml".to_owned(),
+    ]);
+    expected.sort();
+    assert_eq!(asset_scope(&conf), expected);
 }
 
 #[test]

@@ -28,10 +28,14 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; img-src 'self' asset: https://asset.localhost blob: data: https: http:; style-src 'self' 'unsafe-inline'; frame-src 'self' vmark-trusted: http://vmark-trusted.localhost https://www.youtube-nocookie.com https://player.vimeo.com https://player.bilibili.com; form-action 'none'",
+      "csp": "default-src 'self'; script-src 'self'; img-src 'self' asset: https://asset.localhost blob: data: https: http:; style-src 'self' 'unsafe-inline'; frame-src 'self' vmark-trusted: http://vmark-trusted.localhost https://www.youtube-nocookie.com https://player.vimeo.com https://player.bilibili.com; form-action 'none'; connect-src 'self' asset: http://asset.localhost https://asset.localhost",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$HOME/**", "/Volumes/**", "/mnt/**", "/media/**"]
+        "scope": [
+          "$HOME/**", "/Volumes/**", "/mnt/**", "/media/**",
+          "$HOME/.local/state/omarchy/current/theme/colors.toml",
+          "$HOME/.config/foot/foot.ini"
+        ]
       }
     }
   },

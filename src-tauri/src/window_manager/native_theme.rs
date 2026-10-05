@@ -32,6 +32,29 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Theme};
+#[cfg(target_os = "linux")]
+#[path = "omarchy_style.rs"]
+mod omarchy_style;
+
+#[derive(Clone, serde::Deserialize)]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub struct NativeAppearance {
+    background: String,
+    foreground: String,
+    selection: String,
+    border: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct SystemGuiFont {
+    family: String,
+    points: f64,
+}
+
+#[cfg(target_os = "linux")]
+thread_local! {
+    static SYSTEM_CSS: std::cell::RefCell<Option<(gtk::CssProvider, String)>> = const { std::cell::RefCell::new(None) };
+}
 // Only the non-macOS branch enumerates windows; importing this unconditionally
 // is an unused-import warning on macOS, and clippy runs with `-D warnings`.
 #[cfg(not(target_os = "macos"))]
@@ -94,10 +117,73 @@ fn apply_to_all_windows(app: &AppHandle) {
 /// Called by the frontend whenever the resolved theme changes (including at
 /// startup), so this runs often and stays cheap and infallible in practice.
 #[tauri::command]
-pub fn set_native_theme(app: AppHandle, dark: bool) -> Result<(), String> {
+pub async fn set_native_theme(
+    app: AppHandle,
+    dark: bool,
+    appearance: Option<NativeAppearance>,
+) -> Result<Option<SystemGuiFont>, String> {
     remember(dark);
     apply_to_all_windows(&app);
-    Ok(())
+    #[cfg(target_os = "linux")]
+    {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        app.run_on_main_thread(move || {
+            use gtk::prelude::*;
+            let result = (|| {
+                let screen = gtk::gdk::Screen::default().ok_or("GTK screen unavailable")?;
+                let font = gtk::Settings::default()
+                    .and_then(|s| s.gtk_font_name())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "Sans 14".into());
+                let (family, points) = omarchy_style::parse_font(&font);
+                SYSTEM_CSS.with(|state| -> Result<(), String> {
+                    let mut state = state.borrow_mut();
+                    let Some(colors) = appearance else {
+                        if let Some((provider, _)) = state.take() {
+                            gtk::StyleContext::remove_provider_for_screen(&screen, &provider);
+                        }
+                        return Ok(());
+                    };
+                    let css = omarchy_style::native_css(
+                        &[
+                            &colors.background,
+                            &colors.foreground,
+                            &colors.selection,
+                            &colors.border,
+                        ],
+                        &family,
+                        points,
+                    )?;
+                    if state.as_ref().is_some_and(|(_, previous)| previous == &css) {
+                        return Ok(());
+                    }
+                    let provider = gtk::CssProvider::new();
+                    provider
+                        .load_from_data(css.as_bytes())
+                        .map_err(|e| e.to_string())?;
+                    if let Some((previous, _)) = state.take() {
+                        gtk::StyleContext::remove_provider_for_screen(&screen, &previous);
+                    }
+                    gtk::StyleContext::add_provider_for_screen(
+                        &screen,
+                        &provider,
+                        gtk::STYLE_PROVIDER_PRIORITY_USER,
+                    );
+                    *state = Some((provider, css));
+                    Ok(())
+                })?;
+                Ok(Some(SystemGuiFont { family, points }))
+            })();
+            let _ = sender.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+        receiver.await.map_err(|e| e.to_string())?
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = appearance;
+        Ok(None)
+    }
 }
 
 #[cfg(test)]

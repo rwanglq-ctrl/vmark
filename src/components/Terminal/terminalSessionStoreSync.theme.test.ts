@@ -10,6 +10,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useSystemAppearanceStore } from "@/stores/systemAppearanceStore";
 import { useTabStore } from "@/stores/tabStore";
 import { buildXtermThemeForId } from "@/theme";
+import { buildOmarchyAppearance, setOmarchyAppearance } from "@/theme/omarchyAppearance";
 import {
   useUIStoreSync,
   type SyncableSessionEntry,
@@ -67,6 +68,7 @@ function setAppearance(patch: Record<string, unknown>): void {
 
 afterEach(() => {
   act(() => {
+    setOmarchyAppearance(null);
     useSettingsStore.setState({ appearance: initialAppearance });
     useSystemAppearanceStore.setState({ prefersDark: false });
     useTabStore.setState({ tabs: initialTabs, activeTabId: initialActiveTabId } as never);
@@ -74,6 +76,29 @@ afterEach(() => {
 });
 
 describe("useUIStoreSync — theme sync", () => {
+  it("updates an open terminal when the system palette changes without a theme-id change", () => {
+    setAppearance({ theme: "night", followSystemAppearance: true });
+    const entry = makeEntry();
+    renderHook(() => useUIStoreSync({ current: new Map([["s1", entry]]) }));
+    const colors = 'background="#0B1220"\nforeground="#E2E8F0"\naccent="#8FB8F0"\nselection="#1B2C4E"\nmuted="#566378"';
+    act(() => setOmarchyAppearance(buildOmarchyAppearance(colors, "font=JetBrainsMono Nerd Font:size=14", { family: "Sans", points: 14 })));
+    expect(entry.instance.term.options.theme?.background).toBe("#0B1220");
+    expect(entry.instance.term.options.fontSize).toBeCloseTo(18.6667, 3);
+    act(() => setOmarchyAppearance(buildOmarchyAppearance(colors.replace("#0B1220", "#070C15"), "", { family: "Sans", points: 14 })));
+    expect(entry.instance.term.options.theme?.background).toBe("#070C15");
+  });
+
+  it("restores manual terminal metrics when the system snapshot is removed", () => {
+    setAppearance({ theme: "night", followSystemAppearance: true });
+    const entry = makeEntry();
+    renderHook(() => useUIStoreSync({ current: new Map([["s1", entry]]) }));
+    const colors = 'background="#0B1220"\nforeground="#E2E8F0"\naccent="#8FB8F0"\nselection="#1B2C4E"\nmuted="#566378"';
+    act(() => setOmarchyAppearance(buildOmarchyAppearance(colors, "font=JetBrainsMono Nerd Font:size=14", { family: "Sans", points: 14 })));
+    act(() => setOmarchyAppearance(null));
+    expect(entry.instance.term.options.fontSize).toBe(useSettingsStore.getState().terminal.fontSize);
+    expect(entry.instance.term.options.lineHeight).toBe(useSettingsStore.getState().terminal.lineHeight);
+  });
+
   it("rethemes sessions on a manual theme change", () => {
     const entry = makeEntry();
     const sessionsRef = { current: new Map([["s1", entry]]) };

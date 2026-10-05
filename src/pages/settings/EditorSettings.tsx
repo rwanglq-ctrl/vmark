@@ -16,6 +16,8 @@ import {
 import { SettingRow, SettingsGroup, Select, Toggle } from "./components";
 import { WhitespaceSettings } from "./WhitespaceSettings";
 import { FontSettings } from "./FontSettings";
+import { useOmarchyAppearanceValue } from "@/hooks/useOmarchyAppearance";
+import { withCurrentNumericOption } from "./terminalSettingsHelpers";
 
 /** Numeric option definitions */
 const numericOptions = {
@@ -41,6 +43,7 @@ type TypographyConfig = {
 
 export function EditorSettings() {
   const { t } = useTranslation("settings");
+  const systemAppearance = useOmarchyAppearanceValue();
   const appearance = useSettingsStore((state) => state.appearance);
   const general = useSettingsStore((state) => state.general);
   const markdown = useSettingsStore((state) => state.markdown);
@@ -58,7 +61,7 @@ export function EditorSettings() {
 
   /** Typography settings configuration for data-driven rendering */
   const typographySettings: TypographyConfig[] = [
-    { labelKey: "editor.fontSize.label", key: "fontSize", options: numericOptions.fontSize, isNumeric: true },
+    { labelKey: "editor.fontSize.label", key: "fontSize", options: withCurrentNumericOption(numericOptions.fontSize, appearance.fontSize, (v) => `${v}px`), isNumeric: true },
     {
       labelKey: "editor.lineHeight.label", key: "lineHeight", isNumeric: true,
       options: [
@@ -111,8 +114,9 @@ export function EditorSettings() {
         {typographySettings.map(({ labelKey, key, options, isNumeric }) => (
           <SettingRow key={key} label={t(labelKey)}>
             <Select
-              value={String(appearance[key])}
-              options={options}
+              disabled={key === "fontSize" && systemAppearance !== null}
+              value={String(key === "fontSize" && systemAppearance ? systemAppearance.uiSize : appearance[key])}
+              options={key === "fontSize" && systemAppearance ? [{ value: String(systemAppearance.uiSize), label: `${systemAppearance.uiSize.toFixed(1)}px (${systemAppearance.uiSize * 72 / 96}pt)` }] : options}
               onChange={(v) =>
                 updateAppearanceSetting(key, isNumeric ? Number(v) : v)
               }

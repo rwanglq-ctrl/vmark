@@ -143,9 +143,8 @@ export function themeTokensToColors(t: ThemeTokens): ThemeColors {
 /** Computed ThemeColors record for every vmark theme, derived from the
  *  typed ThemeTokens catalog. Built by mapping over `themes` so adding a
  *  theme needs no edit here — it flows straight from `themes/index.ts`. */
-export const themesAsColors: Record<ThemeId, ThemeColors> = Object.fromEntries(
-  (Object.keys(themes) as ThemeId[]).map((id) => [
-    id,
-    themeTokensToColors(themes[id]),
-  ]),
+export const themesAsColors: Record<ThemeId, ThemeColors> = Object.defineProperties(
+  {}, Object.fromEntries((Object.keys(themes) as ThemeId[]).map(id => [
+    id, { enumerable: true, get: () => themeTokensToColors(themes[id]) },
+  ])),
 ) as Record<ThemeId, ThemeColors>;

@@ -50,6 +50,7 @@ import { buildFontStack } from "@/utils/fontStacks";
 import { getRuntimePlatform, type RuntimePlatform } from "@/utils/platform";
 import { verifiedMonoStack } from "@/services/fonts/verifiedMonoStack";
 import { syncNativeTheme } from "@/services/theme/nativeTheme";
+import { useOmarchyAppearance } from "./useOmarchyAppearance";
 
 // Pure color computation moved to @/theme/legacyModeColors (ADR-014 home for
 // color values; keeps this file under the size gate). Re-exported here so
@@ -181,6 +182,7 @@ export const FOCUS_DIM_OPACITY: Record<FocusModeDim, string> = {
 
 /** Hook that applies CSS design tokens (fonts, sizes, colors, dark/light mode) from appearance settings. */
 export function useTheme() {
+  const systemAppearance = useOmarchyAppearance();
   // Track the OS light/dark preference for follow-system-appearance (#1125).
   // Mounted here so every window that themes itself gets the watcher.
   useSystemAppearanceWatcher();
@@ -218,13 +220,28 @@ export function useTheme() {
       appearance.latinFont,
       appearance.cjkFont,
       appearance.monoFont,
-      appearance.fontSize,
+      systemAppearance?.uiSize ?? appearance.fontSize,
       appearance.lineHeight,
       appearance.blockSpacing ?? 1,
       appearance.cjkLetterSpacing ?? "0",
       appearance.editorWidth ?? 50,
       blockFontSize
     );
+    if (systemAppearance) {
+      const scale = systemAppearance.uiSize / 13;
+      applyVars(root, {
+        "--font-ui": `"${systemAppearance.uiFont}", sans-serif`,
+        "--font-sans": `"${systemAppearance.uiFont}", sans-serif`,
+        "--font-size-xs": `${11 * scale}px`, "--font-size-sm": `${12 * scale}px`,
+        "--font-size-base": `${systemAppearance.uiSize}px`, "--font-size-md": `${14 * scale}px`,
+        "--font-size-lg": `${16 * scale}px`, "--font-size-xl": `${22 * scale}px`,
+        "--editor-font-size": `${systemAppearance.uiSize}px`,
+        "--editor-font-size-mono": `${systemAppearance.monoSize}px`,
+        "--settings-nav-width": `${13 * scale}rem`,
+      });
+    } else {
+      for (const variable of ["--font-ui", "--font-size-xs", "--font-size-sm", "--font-size-base", "--font-size-md", "--font-size-lg", "--font-size-xl", "--settings-nav-width"]) root.style.removeProperty(variable);
+    }
 
     // Focus Mode dim level → opacity applied to non-focused content on top of
     // the color shift. "standard" = 1 (color-only, current look).
@@ -240,5 +257,5 @@ export function useTheme() {
       refreshPreviews();
     }
     prevFontSizeRef.current = appearance.fontSize;
-  }, [appearance, blockFontSize, effectiveThemeId]);
+  }, [appearance, blockFontSize, effectiveThemeId, systemAppearance]);
 }

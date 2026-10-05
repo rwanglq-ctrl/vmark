@@ -20,12 +20,13 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import { getOmarchyAppearance } from "@/theme/omarchyAppearance";
 
 /**
  * Last value the backend actually accepted. `null` means "nothing delivered
  * yet", so the first report always goes out.
  */
-let lastDelivered: boolean | null = null;
+let lastDelivered: string | null = null;
 
 /**
  * Report the resolved theme so native window chrome can match it.
@@ -35,13 +36,17 @@ let lastDelivered: boolean | null = null;
  * flip reaches the backend.
  */
 export async function syncNativeTheme(isDark: boolean): Promise<void> {
-  if (lastDelivered === isDark) return;
+  const system = getOmarchyAppearance();
+  const color = system?.theme.color;
+  const params = { dark: isDark, ...(color ? { appearance: { background: color.bg.primary, foreground: color.text.primary, selection: color.selection, border: color.border } } : {}) };
+  const key = JSON.stringify(params);
+  if (lastDelivered === key) return;
 
   try {
-    await invoke("set_native_theme", { dark: isDark });
+    await invoke("set_native_theme", params);
     // Recorded only on success, so a transient failure is retried on the next
     // theme change rather than being remembered as delivered.
-    lastDelivered = isDark;
+    lastDelivered = key;
   } catch {
     // Intentionally silent — see the header.
   }

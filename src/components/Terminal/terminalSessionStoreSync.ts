@@ -46,6 +46,8 @@ export type { SyncableSessionEntry } from "./terminalSessionTypes";
 import type { SyncableSessionEntry } from "./terminalSessionTypes";
 import { currentTerminalThemeId } from "./terminalThemeId";
 import { useTerminalSettingsSync } from "./terminalSettingsSync";
+import { clampContrastRatio } from "./terminalOptions";
+import { getOmarchyAppearance, subscribeOmarchyAppearance } from "@/theme/omarchyAppearance";
 
 
 /** Build a `cd` command string for the given path (POSIX-quoted). */
@@ -105,14 +107,18 @@ export function useUIStoreSync(
     // neutral and the terminal stayed the tinted theme colour.
     let prevTheme = currentTerminalThemeId();
     let prevMono = useSettingsStore.getState().appearance.monoFont;
+    let prevSystem = getOmarchyAppearance();
     const sync = () => {
       const themeId = currentTerminalThemeId();
       const monoFont = useSettingsStore.getState().appearance.monoFont;
-      const themeChanged = themeId !== prevTheme;
+      const system = getOmarchyAppearance();
+      const systemChanged = prevSystem !== system;
+      const themeChanged = themeId !== prevTheme || systemChanged;
       const monoChanged = monoFont !== prevMono;
       if (!themeChanged && !monoChanged) return;
       prevTheme = themeId;
       prevMono = monoFont;
+      prevSystem = system;
       const newTheme = themeChanged ? buildXtermThemeForId(themeId) : null;
       // Resolve the mono stack straight from the setting (G6). This
       // subscriber fires synchronously inside the store `set`, before useTheme's
@@ -130,11 +136,19 @@ export function useUIStoreSync(
             drawBoldTextInBrightColorsForId(themeId);
         }
         entry.instance.term.options.fontFamily = newFont;
+        if (system || systemChanged) {
+          const settings = useSettingsStore.getState().terminal;
+          entry.instance.term.options.fontSize = system?.monoSize ?? settings.fontSize;
+          entry.instance.term.options.lineHeight = system?.terminalLineHeight ?? settings.lineHeight;
+          entry.instance.term.options.cursorStyle = system?.cursorStyle ?? settings.cursorStyle;
+          entry.instance.term.options.cursorBlink = system?.cursorBlink ?? settings.cursorBlink;
+          entry.instance.term.options.minimumContrastRatio = system ? 1 : clampContrastRatio(settings.minimumContrastRatio);
+        }
         // A different mono family changes cell advance width, so cols/rows
         // change just as they do for a font-size change. This effect used to
         // set fontFamily and stop, leaving BOTH xterm geometry and the PTY
         // stale — strictly worse than the font-size path.
-        if (monoChanged) fitAndResizePty(entry);
+        if (monoChanged || systemChanged) fitAndResizePty(entry);
       }
     };
     const unsubs = [
@@ -144,6 +158,7 @@ export function useUIStoreSync(
       // early-returns when nothing it cares about moved, so the extra traffic
       // from unrelated tab-metadata writes costs a comparison.
       useTabStore.subscribe(sync),
+      subscribeOmarchyAppearance(sync),
     ];
     return () => {
       for (const unsub of unsubs) unsub();

@@ -13,7 +13,8 @@ import { useTranslation } from "react-i18next";
 import { useSettingsStore, type TerminalPosition, type TerminalCursorStyle, type TerminalBellMode } from "@/stores/settingsStore";
 import { SettingRow, SettingsGroup, Select, Toggle } from "./components";
 import { terminalSettingsWarn } from "@/utils/debug";
-import { isMacPlatform, isWindowsPlatform } from "@/utils/platform";
+import { getRuntimePlatform, isMacPlatform, isWindowsPlatform } from "@/utils/platform";
+import { useOmarchyAppearanceValue } from "@/hooks/useOmarchyAppearance";
 import {
   panelSizeOptions,
   scrollbackOptions,
@@ -26,6 +27,7 @@ import {
 
 export function TerminalSettings() {
   const { t } = useTranslation("settings");
+  const systemAppearance = useOmarchyAppearanceValue();
   const terminal = useSettingsStore((state) => state.terminal);
   const updateTerminalSetting = useSettingsStore((state) => state.updateTerminalSetting);
 
@@ -140,19 +142,21 @@ export function TerminalSettings() {
 
         <SettingRow label={t("terminal.fontSize.label")} description={t("terminal.fontSize.description")}>
           <Select
-            value={String(terminal.fontSize)}
+            disabled={systemAppearance !== null}
+            value={String(systemAppearance?.monoSize ?? terminal.fontSize)}
             // `Mod +/-` zooms freely past the presets (13 → 15 → 17 …). A
             // native <select> renders its FIRST option for an unmatched value,
             // so an unlisted size used to display "10px" and write 10 on the
             // next change. Inject the current value instead, mirroring
             // the synthetic `shellOptions` entry above.
-            options={fontSizeOptionsFor(terminal.fontSize)}
+            options={systemAppearance ? [{ value: String(systemAppearance.monoSize), label: `${systemAppearance.monoSize.toFixed(1)}px (${systemAppearance.monoSize * 72 / 96}pt)` }] : fontSizeOptionsFor(terminal.fontSize)}
             onChange={(v) => updateTerminalSetting("fontSize", Number(v))}
           />
         </SettingRow>
 
         <SettingRow label={t("terminal.lineHeight.label")} description={t("terminal.lineHeight.description")}>
           <Select
+            disabled={systemAppearance !== null}
             value={String(terminal.lineHeight)}
             // A persisted value outside the presets (the clamp allows up to
             // 2.5) must still display itself — see withCurrentNumericOption.
@@ -167,6 +171,7 @@ export function TerminalSettings() {
 
         <SettingRow label={t("terminal.cursorStyle.label")} description={t("terminal.cursorStyle.description")}>
           <Select
+            disabled={systemAppearance !== null}
             value={terminal.cursorStyle}
             options={cursorStyleOptions}
             onChange={(v) => updateTerminalSetting("cursorStyle", v as TerminalCursorStyle)}
@@ -175,6 +180,7 @@ export function TerminalSettings() {
 
         <SettingRow label={t("terminal.cursorBlink.label")} description={t("terminal.cursorBlink.description")}>
           <Toggle
+            disabled={systemAppearance !== null}
             checked={terminal.cursorBlink}
             onChange={(v) => updateTerminalSetting("cursorBlink", v)}
           />
@@ -187,12 +193,15 @@ export function TerminalSettings() {
           />
         </SettingRow>
 
-        <SettingRow label={t("terminal.webgl.label")} description={t("terminal.webgl.description")}>
-          <Toggle
-            checked={terminal.useWebGL}
-            onChange={(v) => updateTerminalSetting("useWebGL", v)}
-          />
-        </SettingRow>
+        {/* Linux never loads the WebGL renderer (see shouldUseWebglRenderer). */}
+        {getRuntimePlatform() !== "linux" && (
+          <SettingRow label={t("terminal.webgl.label")} description={t("terminal.webgl.description")}>
+            <Toggle
+              checked={terminal.useWebGL}
+              onChange={(v) => updateTerminalSetting("useWebGL", v)}
+            />
+          </SettingRow>
+        )}
 
         {isMac && (
           <SettingRow label={t("terminal.macOptionIsMeta.label")} description={t("terminal.macOptionIsMeta.description")}>
@@ -261,6 +270,7 @@ export function TerminalSettings() {
 
         <SettingRow label={t("terminal.contrast.label")} description={t("terminal.contrast.description")}>
           <Select
+            disabled={systemAppearance !== null}
             value={String(terminal.minimumContrastRatio ?? 4.5)}
             options={withCurrentNumericOption(
               [

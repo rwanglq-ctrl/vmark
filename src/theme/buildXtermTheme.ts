@@ -16,6 +16,7 @@
 
 import type { ITheme } from "@xterm/xterm";
 import { themes, type ThemeId } from "./themes";
+import { getOmarchyAppearance } from "./omarchyAppearance";
 
 /** `rgba(r, g, b, a)` / `#rrggbb` → the same colour at a new alpha. */
 export function withAlpha(color: string, alpha: number): string {
@@ -57,7 +58,8 @@ export function buildXtermThemeForId(themeId: ThemeId): ITheme {
     // slightly higher alpha because xterm composites on a canvas with no
     // ::selection ink adjustment. A separate catalog field had already
     // drifted (sepia/mint carried a dead blue).
-    selectionBackground: withAlpha(color.selection, 0.25),
+    selectionBackground: getOmarchyAppearance() ? color.selection : withAlpha(color.selection, 0.25),
+    ...(getOmarchyAppearance() ? { selectionForeground: color.text.primary } : {}),
 
     // ANSI standard (0–7)
     black:   ansi.black,

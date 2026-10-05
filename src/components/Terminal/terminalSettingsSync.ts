@@ -21,6 +21,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import type { SyncableSessionEntry } from "./terminalSessionTypes";
 import { fitAndResizePty } from "./fitAndResizePty";
 import { clampContrastRatio, clampScrollback } from "./terminalOptions";
+import { getOmarchyAppearance } from "@/theme/omarchyAppearance";
 
 /** Subscribe live sessions to terminal-setting changes. */
 export function useTerminalSettingsSync(
@@ -47,16 +48,17 @@ useEffect(() => {
     if (!fontChanged && !cursorChanged && !metaChanged && !screenReaderChanged && !scrollbackChanged && !contrastChanged) return;
 
     const sessions = sessionsRef.current;
+    const system = getOmarchyAppearance();
     if (!sessions) return;
     for (const [, entry] of sessions) {
       const opts = entry.instance.term.options;
       if (fontChanged) {
-        opts.fontSize = curr.fontSize;
-        opts.lineHeight = curr.lineHeight;
+        opts.fontSize = system?.monoSize ?? curr.fontSize;
+        opts.lineHeight = system?.terminalLineHeight ?? curr.lineHeight;
       }
       if (cursorChanged) {
-        opts.cursorStyle = curr.cursorStyle;
-        opts.cursorBlink = curr.cursorBlink;
+        opts.cursorStyle = system?.cursorStyle ?? curr.cursorStyle;
+        opts.cursorBlink = system?.cursorBlink ?? curr.cursorBlink;
       }
       if (metaChanged) {
         opts.macOptionIsMeta = curr.macOptionIsMeta;
@@ -72,7 +74,7 @@ useEffect(() => {
         opts.scrollback = clampScrollback(curr.scrollback);
       }
       if (contrastChanged) {
-        opts.minimumContrastRatio = clampContrastRatio(curr.minimumContrastRatio);
+        opts.minimumContrastRatio = system ? 1 : clampContrastRatio(curr.minimumContrastRatio);
       }
       if (fontChanged) {
         // Font metrics changed, so cols/rows changed — the PTY must be told,

@@ -31,6 +31,8 @@ import { useSystemAppearanceStore } from "@/stores/systemAppearanceStore";
 import type { ThemeId } from "@/theme/themes";
 import { coerceThemeId } from "@/theme/themeAvailability";
 import { isMacPlatform } from "@/utils/platform";
+import { getOmarchyAppearance, subscribeOmarchyAppearance } from "@/theme/omarchyAppearance";
+import { useSyncExternalStore } from "react";
 
 type EffectiveThemeInput = Pick<
   AppearanceSettings,
@@ -62,6 +64,8 @@ function resolveForPlatform(
   appearance: EffectiveThemeInput,
   prefersDark: boolean
 ): ThemeId {
+  const system = getOmarchyAppearance();
+  if (appearance.followSystemAppearance && system) return system.theme.isDark ? "night" : "white";
   return coerceThemeId(
     resolveEffectiveThemeId(appearance, prefersDark),
     isMacPlatform()
@@ -79,6 +83,7 @@ export function getEffectiveThemeId(): ThemeId {
 /** Reactive effective theme id — re-renders on manual theme changes, on
  *  follow-system toggling, and on OS light/dark flips while following. */
 export function useEffectiveThemeId(): ThemeId {
+  useSyncExternalStore(subscribeOmarchyAppearance, getOmarchyAppearance, () => null);
   const theme = useSettingsStore((s) => s.appearance.theme);
   const follow = useSettingsStore((s) => s.appearance.followSystemAppearance);
   const light = useSettingsStore((s) => s.appearance.systemLightTheme);

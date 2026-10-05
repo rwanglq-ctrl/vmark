@@ -10,6 +10,8 @@
  * @module components/Terminal/terminalOptions
  */
 import { buildXtermThemeForId, drawBoldTextInBrightColorsForId } from "@/theme";
+import { getOmarchyAppearance } from "@/theme/omarchyAppearance";
+import { getRuntimePlatform, type RuntimePlatform } from "@/utils/platform";
 
 /** User-configurable settings for creating a terminal instance. */
 export interface TerminalInstanceSettings {
@@ -63,20 +65,33 @@ export function clampContrastRatio(value: number): number {
   return Math.min(Math.max(Number.isFinite(value) ? value : 4.5, 1), 21);
 }
 
+/**
+ * Whether to load xterm's WebGL renderer. Never on Linux: WebKitGTK presents a
+ * WebGL canvas frame only on the next unrelated repaint, so a keystroke's echo
+ * stayed invisible until the following key. The DOM renderer paints at once.
+ */
+export function shouldUseWebglRenderer(
+  useWebGL: boolean,
+  platform: RuntimePlatform = getRuntimePlatform(),
+): boolean {
+  return useWebGL && platform !== "linux";
+}
+
 /** Build the xterm options for a set of user settings. */
 export function buildTerminalOptions(
   settings: TerminalInstanceSettings,
   fontFamily: string,
 ) {
+  const system = getOmarchyAppearance();
   return {
     theme: buildXtermThemeForId(settings.themeId),
     fontFamily,
     // D15: the terminal's own size, NOT derived from the editor's reading
     // size — density is the point, and it has its own setting and zoom.
-    fontSize: settings.fontSize,
-    lineHeight: settings.lineHeight,
-    cursorStyle: settings.cursorStyle,
-    cursorBlink: settings.cursorBlink,
+    fontSize: system?.monoSize ?? settings.fontSize,
+    lineHeight: system?.terminalLineHeight ?? settings.lineHeight,
+    cursorStyle: system?.cursorStyle ?? settings.cursorStyle,
+    cursorBlink: system?.cursorBlink ?? settings.cursorBlink,
     macOptionIsMeta: settings.macOptionIsMeta,
     screenReaderMode: settings.screenReaderMode,
     // Per-cell foreground lift when an app paints a filled tag
@@ -86,7 +101,7 @@ export function buildTerminalOptions(
     // the foreground to meet the configured ratio against the actual
     // background color (default 4.5 = WCAG AA; user-adjustable for a11y).
     // Fall back to 4.5 when unset; clamp to xterm's valid 1–21 range.
-    minimumContrastRatio: clampContrastRatio(settings.minimumContrastRatio),
+    minimumContrastRatio: system ? 1 : clampContrastRatio(settings.minimumContrastRatio),
     // Per-theme (D10): false where a bright slot doubles as a text
     // tier (solarized), else xterm's default true.
     drawBoldTextInBrightColors: drawBoldTextInBrightColorsForId(settings.themeId),

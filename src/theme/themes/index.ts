@@ -23,14 +23,15 @@ import { mint } from "./mint";
 import { sepia } from "./sepia";
 import { night } from "./night";
 import { solarized } from "./solarized";
+import { omarchyThemeFor } from "../omarchyAppearance";
 
 
 export const themes = {
-  white,
+  get white() { return omarchyThemeFor(false, white); },
   paper,
   mint,
   sepia,
-  night,
+  get night() { return omarchyThemeFor(true, night); },
   solarized,
 } satisfies Record<string, ThemeTokens>;
 

@@ -18,6 +18,7 @@ import { useSystemFontFamilies } from "@/hooks/useSystemFontFamilies";
 import type { FontOption } from "@/utils/fontOptions";
 import { FONT_OPTIONS } from "@/utils/fontOptions";
 import { FontSettingRow } from "./FontSettingRow";
+import { useOmarchyAppearanceValue } from "@/hooks/useOmarchyAppearance";
 
 /** One row per font role, in the order the reader meets them. */
 const FONT_ROLES: { labelKey: string; key: keyof AppearanceSettings; options: readonly FontOption[] }[] = [
@@ -32,6 +33,7 @@ export function FontSettings() {
   const appearance = useSettingsStore((state) => state.appearance);
   const updateAppearanceSetting = useSettingsStore((state) => state.updateAppearanceSetting);
   const installed = useSystemFontFamilies();
+  const systemAppearance = useOmarchyAppearanceValue();
   const systemDefaultLabel = t("editor.font.systemDefault");
 
   return (
@@ -44,6 +46,7 @@ export function FontSettings() {
           options={options}
           systemDefaultLabel={systemDefaultLabel}
           installed={installed}
+          disabled={systemAppearance !== null}
           onChange={(v) => updateAppearanceSetting(key, v)}
         />
       ))}

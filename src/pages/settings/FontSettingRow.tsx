@@ -50,6 +50,7 @@ export interface FontSettingRowProps {
   systemDefaultLabel: string;
   /** Families installed on this machine; empty where VMark cannot enumerate. */
   installed: readonly string[];
+  disabled?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -59,6 +60,7 @@ export function FontSettingRow({
   options,
   systemDefaultLabel,
   installed,
+  disabled = false,
   onChange,
 }: FontSettingRowProps) {
   const { t } = useTranslation("settings");
@@ -104,6 +106,7 @@ export function FontSettingRow({
     <>
       <SettingRow label={label}>
         <Select
+          disabled={disabled}
           value={customFamily === null && showCustom ? CUSTOM_OPTION : value}
           options={[
             ...options.map((o) => ({ value: o.value, label: o.label ?? systemDefaultLabel })),
@@ -125,7 +128,7 @@ export function FontSettingRow({
           onChange={handleSelect}
         />
       </SettingRow>
-      {showCustom && (
+      {showCustom && !disabled && (
         <SettingRow
           label={t("editor.font.customFamily.label")}
           description={
@@ -135,6 +138,7 @@ export function FontSettingRow({
           }
         >
           <FieldInput
+            disabled={disabled}
             value={draft}
             onChange={handleDraft}
             list={listId}
