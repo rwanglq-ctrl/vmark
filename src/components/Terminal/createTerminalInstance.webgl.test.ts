@@ -158,10 +158,6 @@ vi.mock("@/services/persistence/workspaceStorage", () => ({
   getCurrentWindowLabel: () => "main",
 }));
 
-vi.mock("./terminalKeyHandler", () => ({
-  createTerminalKeyHandler: vi.fn(() => () => true),
-}));
-
 vi.mock("@/theme", () => ({
   buildXtermThemeForId: () => ({ background: "#fff" }),
   drawBoldTextInBrightColorsForId: () => true,
