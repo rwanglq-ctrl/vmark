@@ -11,10 +11,18 @@
  * @module lib/ptyInputQueue
  */
 
+/** Ordered input sink for one PTY session. */
+export interface PtyInputQueue {
+  /** Queue `data` for delivery after every earlier write; ignored once closed or empty. */
+  write(data: string): void;
+  /** Drop pending input and refuse further writes; an in-flight write is not awaited. */
+  close(): void;
+}
+
 export function createPtyInputQueue(
   write: (data: string) => Promise<void>,
   onError: (error: unknown) => void,
-) {
+): PtyInputQueue {
   let pending: string[] = [];
   let running = false;
   let closed = false;
