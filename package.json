@@ -217,6 +217,7 @@
       "express-rate-limit": ">=8.2.2 <9",
       "lodash": ">=4.18.0 <5",
       "lodash-es": ">=4.18.0 <5",
+      "source-map-js": ">=1.2.2 <2",
       "typescript-eslint>minimatch": ">=9.0.7 <11",
       "rollup": ">=4.59.0 <5",
       "flatted": ">=3.4.2 <4",
