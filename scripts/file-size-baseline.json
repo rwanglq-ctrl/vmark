@@ -91,7 +91,7 @@
     "src/plugins/codeBlockLineNumbers/tiptap.test.ts": 1616,
     "src/plugins/codemirror/smartPasteImage.test.ts": 1252,
     "src/plugins/codemirror/structuralCharProtection.test.ts": 1082,
-    "src/plugins/footnotePopup/__tests__/FootnotePopupView.test.ts": 1083,
+    "src/plugins/footnotePopup/__tests__/FootnotePopupView.test.ts": 1078,
     "src/plugins/footnotePopup/tiptap.test.ts": 1826,
     "src/plugins/formatToolbar/nodeActions.tiptap.test.ts": 1310,
     "src/plugins/imageHandler/tiptap.test.ts": 1433,
