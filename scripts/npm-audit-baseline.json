@@ -17,10 +17,6 @@
       "module": "esbuild",
       "reason": "esbuild dev server, reached through website>vitepress>vite. Build-time only; no esbuild server runs in the app or in CI's built output."
     },
-    "GHSA-68fv-2mgg-jv7q": {
-      "module": "source-map-js",
-      "reason": "Build-time only: reached solely via .>@tailwindcss/vite>@tailwindcss/node>source-map-js, which runs inside Vite while CSS is compiled; the shipped app contains the built CSS and no source-map-js. The fix (1.2.2, published 2026-09-30) is younger than pnpm-workspace.yaml's minimumReleaseAge until 2026-10-07; take it then with a source-map-js override, which removes the advisory and makes this entry fail as stale."
-    },
     "GHSA-fx2h-pf6j-xcff": {
       "module": "vite",
       "reason": "Dev-server path handling in the website's VitePress toolchain (website>vitepress>vite). Not shipped: the desktop app bundles built assets and never runs a Vite dev server. Fixed by a VitePress line that supports vite>=6.4.3."
