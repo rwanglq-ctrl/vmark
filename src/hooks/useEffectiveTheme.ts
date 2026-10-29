@@ -32,7 +32,6 @@ import { initialState } from "@/stores/settingsStore/defaults";
 import { useSystemAppearanceStore } from "@/stores/systemAppearanceStore";
 import type { ThemeId } from "@/theme/themes";
 import { coerceThemeId } from "@/theme/themeAvailability";
-import { isMacPlatform } from "@/utils/platform";
 import { getOmarchyAppearance, subscribeOmarchyAppearance } from "@/theme/omarchyAppearance";
 import { useSyncExternalStore } from "react";
 import { offersFullThemeCatalog } from "@/services/theme/nativeThemeCapability";
