@@ -242,11 +242,17 @@ windows-core = "=0.62.2"
 # #1527: Globalization, Threading and WindowsAndMessaging back the
 # single-instance holder probe (`single_instance_holder.rs`). Storage_FileSystem
 # reads a document's file index for the agent journal's identity
-# (`agent_journal/doc_key.rs`).
+# (`agent_journal/doc_key.rs`). #1606: Graphics_Dwm colors the Windows 11
+# caption, and Wdk_System_SystemServices + System_SystemInformation read the
+# real OS build (`RtlGetVersion`) that decides whether it can
+# (`window_manager/native_theme.rs`).
 windows = { version = "=0.62.2", features = [
+    "Wdk_System_SystemServices",
     "Win32_Foundation",
     "Win32_Globalization",
+    "Win32_Graphics_Dwm",
     "Win32_Storage_FileSystem",
+    "Win32_System_SystemInformation",
     "Win32_System_Threading",
     "Win32_UI_WindowsAndMessaging",
 ] }

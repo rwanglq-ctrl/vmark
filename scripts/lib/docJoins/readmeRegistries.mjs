@@ -1,7 +1,7 @@
 /**
  * Purpose: read the four code registries README.md restates — MCP providers,
  *   shortcut definitions, UI languages, and the theme catalog with its
- *   Windows/Linux subset — as plain values, from source text.
+ *   Windows 10/Linux subset — as plain values, from source text.
  *
  * Text, not imports, on purpose: `providers.rs` is Rust, and a gates-tier
  * script has no business evaluating `LanguageSettings.tsx` (React) to read one
@@ -22,7 +22,7 @@
  * @coordinates-with src/stores/settingsStore/shortcutDefinitions.ts — DEFAULT_SHORTCUTS
  * @coordinates-with src/pages/settings/LanguageSettings.tsx — ALL_LANGUAGES
  * @coordinates-with src/theme/themes/index.ts — themes catalog
- * @coordinates-with src/theme/themeAvailability.ts — NON_MAC_THEME_IDS
+ * @coordinates-with src/theme/themeAvailability.ts — NEUTRAL_THEME_IDS
  * @module scripts/lib/docJoins/readmeRegistries
  */
 
@@ -168,16 +168,16 @@ export function parseThemeIds(tsSource) {
   return ids;
 }
 
-/** The string literals of `NON_MAC_THEME_IDS` — the themes Windows and Linux offer. */
-export function parseNonMacThemeIds(tsSource) {
+/** The string literals of `NEUTRAL_THEME_IDS` — the themes Windows 10 and Linux offer. */
+export function parseNeutralThemeIds(tsSource) {
   const open = locate(
     tsSource,
-    "NON_MAC_THEME_IDS array",
-    /^[ \t]*(?:export\s+)?const\s+NON_MAC_THEME_IDS\b[^=\n]*=\s*(?:Object\.freeze\(\s*)?\[/m,
+    "NEUTRAL_THEME_IDS array",
+    /^[ \t]*(?:export\s+)?const\s+NEUTRAL_THEME_IDS\b[^=\n]*=\s*(?:Object\.freeze\(\s*)?\[/m,
   );
   const { body } = scanBracket(tsSource, open);
   const ids = [...body.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-  if (ids.length === 0) throw new Error("NON_MAC_THEME_IDS has no string literals");
+  if (ids.length === 0) throw new Error("NEUTRAL_THEME_IDS has no string literals");
   return ids;
 }
 

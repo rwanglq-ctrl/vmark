@@ -91,3 +91,123 @@ fn default_preference_is_light() {
     remember(false);
     assert_eq!(current_theme(), Theme::Light);
 }
+
+// -- chrome colors (#1606) ---------------------------------------------------
+//
+// DWM takes a COLORREF, which is 0x00BBGGRR — the byte order is reversed from
+// the `#RRGGBB` the theme catalog writes. Getting this wrong paints Sepia's
+// caption blue, so every channel is pinned separately.
+
+#[test]
+fn hex_color_maps_to_colorref_byte_order() {
+    assert_eq!(parse_hex_colorref("#112233"), Some(0x0033_2211));
+    assert_eq!(parse_hex_colorref("#FF0000"), Some(0x0000_00FF));
+    assert_eq!(parse_hex_colorref("#00FF00"), Some(0x0000_FF00));
+    assert_eq!(parse_hex_colorref("#0000FF"), Some(0x00FF_0000));
+}
+
+#[test]
+fn hex_color_accepts_either_case() {
+    assert_eq!(parse_hex_colorref("#F9F0DB"), parse_hex_colorref("#f9f0db"));
+    assert_eq!(parse_hex_colorref("#F9F0DB"), Some(0x00DB_F0F9));
+}
+
+#[test]
+fn hex_color_covers_the_extremes() {
+    assert_eq!(parse_hex_colorref("#000000"), Some(0));
+    assert_eq!(parse_hex_colorref("#FFFFFF"), Some(0x00FF_FFFF));
+}
+
+/// Anything but exactly `#RRGGBB` is refused, never guessed at. In particular
+/// `0xFFFFFFFF` (DWMWA_COLOR_DEFAULT) and `0xFFFFFFFE` (DWMWA_COLOR_NONE) are
+/// sentinels with their own meaning, so no input may produce a value with the
+/// high byte set — a 4-byte `#AARRGGBB` would.
+#[test]
+fn hex_color_refuses_every_other_shape() {
+    for bad in [
+        "", "#", "112233", "#12345", "#1234567", "#11223344", "#GG0000", "# 11223",
+        "#11223 ", "rgba(0,0,0,1)", "white", "#１２３４５６", "#+12345", "#-12345",
+    ] {
+        assert_eq!(parse_hex_colorref(bad), None, "{bad:?} must be refused");
+    }
+}
+
+fn input(caption: &str, text: &str, border: &str) -> NativeChromeInput {
+    NativeChromeInput {
+        caption: caption.into(),
+        text: text.into(),
+        border: border.into(),
+    }
+}
+
+#[test]
+fn chrome_input_parses_all_three_colors() {
+    let colors = ChromeColors::parse(&input("#F9F0DB", "#5c4b37", "#e0d5bc")).unwrap();
+    assert_eq!(
+        colors,
+        ChromeColors {
+            caption: 0x00DB_F0F9,
+            text: 0x0037_4B5C,
+            border: 0x00BC_D5E0,
+        }
+    );
+}
+
+#[test]
+fn chrome_input_refuses_a_bad_color_by_name() {
+    for (which, chrome) in [
+        ("caption", input("red", "#000000", "#000000")),
+        ("text", input("#000000", "#00", "#000000")),
+        ("border", input("#000000", "#000000", "")),
+    ] {
+        let err = ChromeColors::parse(&chrome).unwrap_err();
+        assert_eq!(err.code(), crate::command_error::ErrorCode::InvalidInput);
+        assert!(
+            err.message().contains(which),
+            "error should name the {which} field: {}",
+            err.message()
+        );
+    }
+}
+
+/// The frontend's payload shape, exactly as `syncNativeTheme` sends it.
+#[test]
+fn chrome_input_deserializes_from_the_frontend_shape() {
+    let parsed: NativeChromeInput = serde_json::from_value(serde_json::json!({
+        "caption": "#F9F0DB", "text": "#5c4b37", "border": "#e0d5bc"
+    }))
+    .unwrap();
+    assert_eq!(parsed.caption, "#F9F0DB");
+    assert_eq!(parsed.text, "#5c4b37");
+    assert_eq!(parsed.border, "#e0d5bc");
+}
+
+// -- capability ----------------------------------------------------------------
+
+/// `DWMWA_CAPTION_COLOR` exists from Windows 11 (build 22000); on Windows 10
+/// DWM rejects it, so the frontend must stay on the light/dark pair there.
+#[test]
+fn caption_color_starts_at_the_first_windows_11_build() {
+    assert!(!caption_color_supported(19045), "Windows 10 22H2");
+    assert!(!caption_color_supported(21999));
+    assert!(caption_color_supported(22000), "Windows 11 21H2");
+    assert!(caption_color_supported(26100), "Windows 11 24H2");
+}
+
+#[test]
+fn capabilities_serialize_in_the_shape_the_frontend_reads() {
+    let wire = serde_json::to_value(NativeThemeCapabilities {
+        themed_caption: true,
+    })
+    .unwrap();
+    assert_eq!(wire, serde_json::json!({ "themedCaption": true }));
+}
+
+/// macOS renders the full catalog through its overlay title bar, which the
+/// frontend knows on its own; Linux cannot color its title bar at all. Neither
+/// may claim a DWM caption.
+#[cfg(not(target_os = "windows"))]
+#[test]
+fn no_themed_caption_off_windows() {
+    assert!(!native_theme_capabilities().unwrap().themed_caption);
+}
