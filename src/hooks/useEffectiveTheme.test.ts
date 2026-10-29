@@ -10,7 +10,12 @@ vi.mock("@/utils/platform", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/utils/platform")>()),
   isMacPlatform: () => platform.isMac,
 }));
+import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore } from "@/stores/settingsStore";
+import {
+  __resetNativeThemeCapability,
+  loadNativeThemeCapability,
+} from "@/services/theme/nativeThemeCapability";
 import { useSystemAppearanceStore } from "@/stores/systemAppearanceStore";
 import {
   getEffectiveThemeId,
@@ -190,5 +195,47 @@ describe("platform narrowing (Windows/Linux)", () => {
 
     setPrefersDark(true);
     expect(result.current).toBe("night");
+  });
+});
+
+// Windows 11 colors its caption through DWM, so the backend reports a themable
+// caption and nothing is narrowed (#1606). The capability arrives over the real
+// service; only the IPC is stubbed.
+describe("Windows 11 — themable caption", () => {
+  beforeEach(async () => {
+    platform.isMac = false;
+    vi.mocked(invoke).mockResolvedValueOnce({ themedCaption: true });
+    await loadNativeThemeCapability();
+  });
+
+  afterEach(() => {
+    __resetNativeThemeCapability();
+  });
+
+  it("keeps every catalog theme as picked", () => {
+    for (const theme of ["paper", "mint", "sepia", "solarized"] as const) {
+      setAppearance({ theme, followSystemAppearance: false });
+      expect(getEffectiveThemeId()).toBe(theme);
+    }
+  });
+
+  // #1125's pair may now name the tinted themes too.
+  it("keeps a tinted follow-system pair", () => {
+    setAppearance({
+      followSystemAppearance: true,
+      systemLightTheme: "sepia",
+      systemDarkTheme: "solarized",
+    });
+    setPrefersDark(false);
+    const { result } = renderHook(() => useEffectiveThemeId());
+    expect(result.current).toBe("sepia");
+    setPrefersDark(true);
+    expect(result.current).toBe("solarized");
+  });
+
+  it("narrows again once the capability is gone (Windows 10)", () => {
+    __resetNativeThemeCapability();
+    setAppearance({ theme: "sepia", followSystemAppearance: false });
+    expect(getEffectiveThemeId()).toBe("white");
   });
 });

@@ -18,7 +18,8 @@ import {
 import { SettingRow, SettingsGroup, Toggle, Select } from "./components";
 import { selectableThemeIds } from "@/theme/themeAvailability";
 import { themes as themeCatalog } from "@/theme/themes";
-import { isMacPlatform, usesOverlayTitleBar } from "@/utils/platform";
+import { usesOverlayTitleBar } from "@/utils/platform";
+import { offersFullThemeCatalog } from "@/services/theme/nativeThemeCapability";
 import { resolveSidebarStyle } from "@/shell/shellChrome";
 
 /** One row of theme swatches: each swatch is a MINI PAGE from the
@@ -42,9 +43,10 @@ function ThemeSwatchRow({
   mode?: "light" | "dark";
 }) {
   const { t } = useTranslation("settings");
-  // Windows/Linux offer only the light/dark pair their native chrome can
-  // actually match — see theme/themeAvailability.ts.
-  const available = selectableThemeIds(isMacPlatform()).filter(
+  // Windows 10 and Linux offer only the light/dark pair their native chrome
+  // can actually match — see theme/themeAvailability.ts. The same flag gates
+  // rendering in hooks/useEffectiveTheme.ts, so an offered swatch renders.
+  const available = selectableThemeIds(offersFullThemeCatalog()).filter(
     (id) => !mode || themeCatalog[id].isDark === (mode === "dark"),
   );
   return (

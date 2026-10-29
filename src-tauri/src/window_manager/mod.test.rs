@@ -29,7 +29,10 @@ use super::*;
 /// broke.
 #[allow(unused_imports)]
 mod facade_exports {
-    use super::{current_theme, open_settings_window, prefers_dark, remember, set_native_theme};
+    use super::{
+        current_theme, native_theme_capabilities, open_settings_window, prefers_dark, remember,
+        set_native_theme,
+    };
 }
 
 /// Guards against the facade re-exporting two different things under one

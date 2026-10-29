@@ -30,7 +30,7 @@
  *
  * @coordinates-with settingsStore.ts — reads appearance settings
  * @coordinates-with useEffectiveTheme.ts — resolves manual vs follow-system theme id
- * @coordinates-with services/theme/nativeTheme.ts — reports light/dark to native chrome
+ * @coordinates-with services/theme/nativeTheme.ts — reports light/dark and chrome colors to native chrome
  * @coordinates-with useSystemAppearanceWatcher.ts — mounted here to track the OS preference
  * @coordinates-with index.css — static token defaults (overridden here)
  * @coordinates-with theme/legacyModeColors.ts — derived legacy color sets + pure color-var computation
@@ -50,6 +50,7 @@ import { buildFontStack } from "@/utils/fontStacks";
 import { getRuntimePlatform, type RuntimePlatform } from "@/utils/platform";
 import { verifiedMonoStack } from "@/services/fonts/verifiedMonoStack";
 import { syncNativeTheme } from "@/services/theme/nativeTheme";
+import { nativeChromeColors } from "@/theme/nativeChrome";
 
 // Pure color computation moved to @/theme/legacyModeColors (ADR-014 home for
 // color values; keeps this file under the size gate). Re-exported here so
@@ -210,9 +211,10 @@ export function useTheme() {
     applyCoreColors(root, themeColors);
     applyModeColors(root, themeColors, isDark);
     // Keep OS-drawn chrome (title bar; the menu bar on Windows) in step with
-    // the theme we just applied. Fire-and-forget: it self-dedupes, and a
-    // failure must not abort the rest of this effect.
-    void syncNativeTheme(isDark);
+    // the theme we just applied — its polarity, and on Windows 11 its colors.
+    // Fire-and-forget: it self-dedupes, and a failure must not abort the rest
+    // of this effect.
+    void syncNativeTheme(isDark, nativeChromeColors(activeTokens));
     applyTypography(
       root,
       appearance.latinFont,

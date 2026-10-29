@@ -9,19 +9,19 @@
  *   | `Supported: …` line + AI-Native bullet  | non-`legacy` entries of `PROVIDERS` (providers.rs)  |
  *   | `- **[N ]Shortcuts**` bullet            | object literals in `DEFAULT_SHORTCUTS`              |
  *   | `- **[N ]Languages** — a · b · c.`      | `ALL_LANGUAGES` labels (LanguageSettings.tsx)       |
- *   | `- **[N ]Themes** — …` (shape below)    | `themes` catalog + `NON_MAC_THEME_IDS`              |
+ *   | `- **[N ]Themes** — …` (shape below)    | `themes` catalog + `NEUTRAL_THEME_IDS`              |
  *
  * Counts are OPTIONAL and checked when present: `**Shortcuts**` and
  * `**127 Shortcuts**` both pass, `**122 Shortcuts**` fails. A README is free
  * to stop counting; it is not free to count wrong.
  *
  * Themes sentence shape — asserted exactly, because the platform qualification
- * is the point (Windows and Linux draw their own chrome and offer only the
+ * is the point (Windows 10 and Linux cannot color their title bar and offer only the
  * light/dark pair, `themeAvailability.ts`):
  *
- *   - **N Themes** — <every catalog theme, comma-separated> on macOS; Windows and Linux offer <A and B>.
+ *   - **N Themes** — <every catalog theme, comma-separated> on macOS and Windows 11; Windows 10 and Linux offer <A and B>.
  *
- * where `<A and B>` are the `NON_MAC_THEME_IDS` themes. Theme names compare
+ * where `<A and B>` are the `NEUTRAL_THEME_IDS` themes. Theme names compare
  * case- and punctuation-insensitively to the catalog ids ("Solarized" ↔ its
  * lowercase id); every list compares as a multiset, order-insensitive.
  *
@@ -47,13 +47,13 @@ import { resolve } from "node:path";
 import {
   countShortcutDefinitions,
   parseLanguages,
-  parseNonMacThemeIds,
+  parseNeutralThemeIds,
   parseProviders,
   parseThemeIds,
 } from "./readmeRegistries.mjs";
 
 /** The registry parsers, re-exported so this module is the whole join for its consumers and tests. */
-export { countShortcutDefinitions, parseLanguages, parseNonMacThemeIds, parseProviders, parseThemeIds };
+export { countShortcutDefinitions, parseLanguages, parseNeutralThemeIds, parseProviders, parseThemeIds };
 
 export const id = "readme-claims";
 
@@ -106,11 +106,11 @@ function claimBullet(lines, noun) {
 
 /**
  * Check every README claim against `registries`
- * (`{ providers, languages, themeIds, nonMacThemeIds, shortcutCount }`).
+ * (`{ providers, languages, themeIds, neutralThemeIds, shortcutCount }`).
  * Pure: takes text, returns `{ findings, info }`; `label` prefixes each line.
  */
 export function checkReadme(readme, registries, label = "README.md") {
-  const { providers, languages, themeIds, nonMacThemeIds, shortcutCount } = registries;
+  const { providers, languages, themeIds, neutralThemeIds, shortcutCount } = registries;
   const lines = readme.split("\n");
   const at = (index) => `${label}:${index + 1}`;
   const findings = [];
@@ -169,30 +169,30 @@ export function checkReadme(readme, registries, label = "README.md") {
     if (diff) findings.push(`${at(langs.index)} language list ≠ ALL_LANGUAGES labels — missing: ${fmt(diff.missing)}; extra: ${fmt(diff.extra)}`);
   }
 
-  // (d) Themes: every catalog theme on macOS, the NON_MAC pair elsewhere, in the exact sentence shape.
+  // (d) Themes: every catalog theme on macOS and Windows 11, the neutral pair elsewhere, in the exact sentence shape.
   const themes = claimBullet(lines, "Themes");
   if (!themes) {
     findings.push(`${label}: no "- **Themes**" (or "- **N Themes**") bullet under Highlights`);
   } else {
-    const shape = /^(.+?) on macOS; Windows and Linux offer (.+?)\.?$/.exec(themes.rest);
+    const shape = /^(.+?) on macOS and Windows 11; Windows 10 and Linux offer (.+?)\.?$/.exec(themes.rest);
     if (!shape) {
       findings.push(
-        `${at(themes.index)} themes bullet must read "- **N Themes** — <every catalog theme> on macOS; Windows and Linux offer <the NON_MAC_THEME_IDS themes>." — got: ${lines[themes.index]}`,
+        `${at(themes.index)} themes bullet must read "- **N Themes** — <every catalog theme> on macOS and Windows 11; Windows 10 and Linux offer <the NEUTRAL_THEME_IDS themes>." — got: ${lines[themes.index]}`,
       );
     } else {
       if (themes.count !== null && themes.count !== themeIds.length) {
         findings.push(`${at(themes.index)} claims ${themes.count} themes; the catalog has ${themeIds.length}`);
       }
       const macDiff = multisetDiff(splitList(shape[1]).map(norm), themeIds.map(norm));
-      if (macDiff) findings.push(`${at(themes.index)} macOS theme list ≠ catalog — missing: ${fmt(macDiff.missing)}; extra: ${fmt(macDiff.extra)}`);
-      const otherDiff = multisetDiff(splitList(shape[2]).map(norm), nonMacThemeIds.map(norm));
-      if (otherDiff) findings.push(`${at(themes.index)} Windows and Linux theme list ≠ NON_MAC_THEME_IDS — missing: ${fmt(otherDiff.missing)}; extra: ${fmt(otherDiff.extra)}`);
+      if (macDiff) findings.push(`${at(themes.index)} macOS and Windows 11 theme list ≠ catalog — missing: ${fmt(macDiff.missing)}; extra: ${fmt(macDiff.extra)}`);
+      const otherDiff = multisetDiff(splitList(shape[2]).map(norm), neutralThemeIds.map(norm));
+      if (otherDiff) findings.push(`${at(themes.index)} Windows 10 and Linux theme list ≠ NEUTRAL_THEME_IDS — missing: ${fmt(otherDiff.missing)}; extra: ${fmt(otherDiff.extra)}`);
     }
   }
 
   const shortcutClaim = shortcuts ? (shortcuts.count === null ? "non-numeric claim" : "numeric claim") : "no claim";
   const info = [
-    `${label}: ${current.length} MCP targets, ${shortcutCount} shortcuts (${shortcutClaim}), ${languages.length} languages, ${themeIds.length} themes (${nonMacThemeIds.length} off macOS)`,
+    `${label}: ${current.length} MCP targets, ${shortcutCount} shortcuts (${shortcutClaim}), ${languages.length} languages, ${themeIds.length} themes (${neutralThemeIds.length} on Windows 10 and Linux)`,
   ];
   return { findings, info };
 }
@@ -208,7 +208,7 @@ export async function run({ root, paths = DEFAULT_PATHS } = {}) {
     ["shortcutCount", paths.shortcuts, countShortcutDefinitions],
     ["languages", paths.languages, parseLanguages],
     ["themeIds", paths.themes, parseThemeIds],
-    ["nonMacThemeIds", paths.themeAvailability, parseNonMacThemeIds],
+    ["neutralThemeIds", paths.themeAvailability, parseNeutralThemeIds],
   ];
   for (const [key, rel, parse] of parsers) {
     try {

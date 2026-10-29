@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  __resetNativeThemeCapability,
+  loadNativeThemeCapability,
+} from "@/services/theme/nativeThemeCapability";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FOCUS_DIM_OPACITY } from "@/hooks/useTheme";
@@ -309,5 +314,44 @@ describe("theme swatches are mini pages (WI-UI4.6)", () => {
     render(<AppearanceSettings />);
     const night = document.querySelector("[data-theme-swatch='night']")?.parentElement;
     expect(night?.textContent).toContain("Dark");
+  });
+});
+
+// Windows 11: the backend reports a caption DWM can color, so the picker
+// offers the whole catalog, in both follow-system rows too (#1606).
+describe("AppearanceSettings — full catalog on Windows 11", () => {
+  beforeEach(async () => {
+    platform.isMac = false;
+    vi.mocked(invoke).mockResolvedValueOnce({ themedCaption: true });
+    await loadNativeThemeCapability();
+    useSettingsStore.setState({
+      appearance: {
+        ...useSettingsStore.getState().appearance,
+        followSystemAppearance: false,
+        theme: "white",
+      },
+    });
+  });
+
+  afterEach(() => {
+    __resetNativeThemeCapability();
+  });
+
+  it("offers every catalog theme", () => {
+    render(<AppearanceSettings />);
+    for (const name of [/white/i, /paper/i, /mint/i, /sepia/i, /night/i, /solarized/i]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("offers the tinted themes in the follow-system rows by polarity", () => {
+    useSettingsStore.setState({
+      appearance: { ...useSettingsStore.getState().appearance, followSystemAppearance: true },
+    });
+    render(<AppearanceSettings />);
+    expect(screen.getAllByRole("button", { name: /sepia/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /solarized/i })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: /sepia/i }));
+    expect(useSettingsStore.getState().appearance.systemLightTheme).toBe("sepia");
   });
 });

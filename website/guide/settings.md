@@ -23,8 +23,8 @@ Choose one of six color themes. The active theme is indicated by a ring around i
 | Night | `#23262B` | Dark slate for low light |
 | Solarized | `#002B36` | Solarized Dark, the classic palette |
 
-::: info Windows and Linux offer White and Night only
-On Windows and Linux the system draws the title bar (and, on Windows, the menu bar), and it can only be light or dark. So those platforms offer just **White** and **Night**, and a theme that cannot match the system chrome is shown as the nearest of the two: Paper, Mint and Sepia display as White, Solarized as Night. Your saved choice is not changed — on macOS the full catalog is available.
+::: info Windows 10 and Linux offer White and Night only
+On Windows 10 and Linux the system draws the title bar, and it can only be light or dark. So those platforms offer just **White** and **Night**, and a theme that cannot match the system chrome is shown as the nearest of the two: Paper, Mint and Sepia display as White, Solarized as Night. Your saved choice is not changed — on macOS and Windows 11 the full catalog is available. On Windows 11 the title bar takes the theme's own colors; the menu bar is still drawn light or dark.
 :::
 
 #### Follow system appearance
