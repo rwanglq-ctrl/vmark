@@ -53,6 +53,8 @@ import { createSecureStorage } from "@/services/secrets/secureStorage";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { hostSettings } from "@/plugins/shared/hostSettings";
 import { getFormatById } from "@/lib/formats/registry";
+import { invoke } from "@tauri-apps/api/core";
+import { offersFullThemeCatalog } from "@/services/theme/nativeThemeCapability";
 
 describe("bootstrap order", () => {
   it("runs the synchronous setup while secure storage loads, and loads App only after it has", async () => {
@@ -83,5 +85,33 @@ describe("bootstrap order", () => {
     expect(loadApp).toHaveBeenCalledTimes(1);
     expect(cacheWhenAppLoaded).toEqual([SAVED_PROVIDERS]);
     expect(boot.renders).toBe(1);
+  });
+
+  // #1606: a Windows 11 window must know it can render the full catalog BEFORE
+  // App's first render, or a Sepia pick paints as White and then switches.
+  it("loads App only after the native theme capability has arrived", async () => {
+    let answer!: (reply: unknown) => void;
+    vi.mocked(invoke).mockImplementation((command: string) =>
+      command === "native_theme_capabilities"
+        ? new Promise((resolve) => {
+            answer = resolve;
+          })
+        : Promise.resolve(undefined),
+    );
+    const fullCatalogWhenAppLoaded: boolean[] = [];
+    const loadApp = vi.fn(async () => {
+      fullCatalogWhenAppLoaded.push(offersFullThemeCatalog());
+      return { default: () => null };
+    });
+
+    const done = bootstrap(loadApp);
+    await vi.waitFor(() => expect(answer).toBeTypeOf("function"));
+    await Promise.resolve();
+    expect(loadApp).not.toHaveBeenCalled();
+
+    answer({ themedCaption: true });
+    await done;
+
+    expect(fullCatalogWhenAppLoaded).toEqual([true]);
   });
 });

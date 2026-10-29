@@ -23,8 +23,8 @@ Choisissez parmi six thèmes de couleurs. Le thème actif est indiqué par un an
 | Nuit | `#23262B` | Ardoise sombre pour une faible luminosité |
 | Solarized | `#002B36` | Solarized Dark, la palette classique |
 
-::: info Windows et Linux ne proposent que Blanc et Nuit
-Sous Windows et Linux, c'est le système qui dessine la barre de titre (et, sous Windows, la barre de menus), et elle ne peut être que claire ou sombre. Ces plateformes ne proposent donc que **Blanc** et **Nuit**, et un thème qui ne peut pas s'accorder avec le cadre du système est affiché comme le plus proche des deux : Papier, Menthe et Sépia s'affichent en Blanc, Solarized en Nuit. Votre choix enregistré n'est pas modifié — sous macOS, le catalogue complet est disponible.
+::: info Windows 10 et Linux ne proposent que Blanc et Nuit
+Sous Windows 10 et Linux, c'est le système qui dessine la barre de titre, et elle ne peut être que claire ou sombre. Ces plateformes ne proposent donc que **Blanc** et **Nuit**, et un thème qui ne peut pas s'accorder avec le cadre du système est affiché comme le plus proche des deux : Papier, Menthe et Sépia s'affichent en Blanc, Solarized en Nuit. Votre choix enregistré n'est pas modifié — sous macOS et Windows 11, le catalogue complet est disponible. Sous Windows 11, la barre de titre prend les couleurs du thème lui-même ; la barre de menus reste dessinée en clair ou en sombre.
 :::
 
 #### Suivre l'apparence du système

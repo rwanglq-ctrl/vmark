@@ -3,25 +3,26 @@ import { describe, expect, it } from "vitest";
 import { themes } from "./themes";
 import type { ThemeId } from "./themes";
 import {
-  NON_MAC_THEME_IDS,
+  NEUTRAL_THEME_IDS,
   coerceThemeId,
+  neutralThemeId,
   selectableThemeIds,
 } from "./themeAvailability";
 
 const ALL_IDS = Object.keys(themes) as ThemeId[];
 
 describe("selectableThemeIds", () => {
-  it("offers the whole catalog on macOS", () => {
+  it("offers the whole catalog where the chrome can follow every theme", () => {
     expect(selectableThemeIds(true)).toEqual(ALL_IDS);
   });
 
-  it("offers only white and night off macOS", () => {
+  it("offers only white and night where the chrome is light-or-dark only", () => {
     expect(selectableThemeIds(false)).toEqual(["white", "night"]);
   });
 
-  // Windows/Linux title bars are light-or-dark only, so every offered theme
+  // Windows 10 and Linux title bars are light-or-dark only, so every offered theme
   // must map onto one of those without ambiguity.
-  it("offers exactly one light and one dark option off macOS", () => {
+  it("offers exactly one light and one dark option on the narrowed platforms", () => {
     const offered = selectableThemeIds(false);
     const dark = offered.filter((id) => themes[id].isDark);
     const light = offered.filter((id) => !themes[id].isDark);
@@ -43,19 +44,19 @@ describe("selectableThemeIds", () => {
 });
 
 describe("coerceThemeId", () => {
-  it("leaves every theme untouched on macOS", () => {
+  it("leaves every theme untouched where the full catalog renders", () => {
     for (const id of ALL_IDS) {
       expect(coerceThemeId(id, true)).toBe(id);
     }
   });
 
-  it("keeps the two supported themes off macOS", () => {
-    for (const id of NON_MAC_THEME_IDS) {
+  it("keeps the two neutral themes on the narrowed platforms", () => {
+    for (const id of NEUTRAL_THEME_IDS) {
       expect(coerceThemeId(id, false)).toBe(id);
     }
   });
 
-  // A user who picked sepia on macOS, then synced settings to Windows, must
+  // A user who picked sepia on macOS, then synced settings to Windows 10, must
   // land on a theme of the same polarity — not be flipped from light to dark.
   it("maps an unsupported light theme to white", () => {
     for (const id of ALL_IDS.filter((i) => !themes[i].isDark)) {
@@ -69,9 +70,9 @@ describe("coerceThemeId", () => {
     }
   });
 
-  it("never returns an unsupported theme off macOS", () => {
+  it("never returns an unsupported theme on the narrowed platforms", () => {
     for (const id of ALL_IDS) {
-      expect(NON_MAC_THEME_IDS).toContain(coerceThemeId(id, false));
+      expect(NEUTRAL_THEME_IDS).toContain(coerceThemeId(id, false));
     }
   });
 
@@ -81,11 +82,18 @@ describe("coerceThemeId", () => {
     expect(coerceThemeId("does-not-exist" as ThemeId, false)).toBe("white");
   });
 
-  it("passes an unknown id through untouched on macOS", () => {
-    // macOS keeps its existing behavior: useTheme's own `?? themes.paper`
+  it("passes an unknown id through untouched where the full catalog renders", () => {
+    // The full-catalog path keeps its existing behavior: useTheme's own `?? themes.paper`
     // guard handles unknown ids there, so this must not silently rewrite it.
     expect(coerceThemeId("does-not-exist" as ThemeId, true)).toBe(
       "does-not-exist"
     );
+  });
+});
+
+describe("neutralThemeId", () => {
+  it("is the neutral of each polarity, and both neutrals are the narrowed pair", () => {
+    const neutrals = new Set(ALL_IDS.map((id) => neutralThemeId(id)));
+    expect([...neutrals].sort()).toEqual([...NEUTRAL_THEME_IDS].sort());
   });
 });

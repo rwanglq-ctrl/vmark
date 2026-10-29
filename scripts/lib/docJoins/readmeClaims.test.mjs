@@ -9,14 +9,14 @@ import {
   countShortcutDefinitions,
   id,
   parseLanguages,
-  parseNonMacThemeIds,
+  parseNeutralThemeIds,
   parseProviders,
   parseThemeIds,
   run,
 } from "./readmeClaims.mjs";
 import { DEFAULT_SHORTCUTS } from "../../../src/stores/settingsStore/shortcutDefinitions.ts";
 import { themes } from "../../../src/theme/themes/index.ts";
-import { NON_MAC_THEME_IDS } from "../../../src/theme/themeAvailability.ts";
+import { NEUTRAL_THEME_IDS } from "../../../src/theme/themeAvailability.ts";
 
 const REPO = resolve(import.meta.dirname, "../../..");
 
@@ -85,13 +85,13 @@ export type ThemeId = keyof typeof themes;
 `;
 
 const AVAIL_TS = `
-export const NON_MAC_THEME_IDS: readonly ThemeId[] = Object.freeze([
+export const NEUTRAL_THEME_IDS: readonly ThemeId[] = Object.freeze([
   "white",
   "night",
 ] as ThemeId[]);
 
-export function selectableThemeIds(isMac: boolean): ThemeId[] {
-  return isMac ? (Object.keys(themes) as ThemeId[]) : [...NON_MAC_THEME_IDS];
+export function selectableThemeIds(fullCatalog: boolean): ThemeId[] {
+  return fullCatalog ? (Object.keys(themes) as ThemeId[]) : [...NEUTRAL_THEME_IDS];
 }
 `;
 
@@ -133,7 +133,7 @@ const REG = {
     { value: "pt-BR", label: "Português (Brasil)" },
   ],
   themeIds: ["white", "paper", "night"],
-  nonMacThemeIds: ["white", "night"],
+  neutralThemeIds: ["white", "night"],
   shortcutCount: 127,
 };
 
@@ -143,7 +143,7 @@ const LINES = {
   aiNative:
     "- **AI-Native** — MCP integration for Claude Desktop, Claude Code, and Codex CLI. AI Genies for inline writing assistance.",
   languages: "- **3 Languages** — English · 简体中文 · Português (Brasil). Auto-detected on first launch.",
-  themes: "- **3 Themes** — White, Paper, Night on macOS; Windows and Linux offer White and Night.",
+  themes: "- **3 Themes** — White, Paper, Night on macOS and Windows 11; Windows 10 and Linux offer White and Night.",
   shortcuts: "- **Shortcuts** — Every one customizable in Settings",
   supported: "Supported: Claude Desktop, Claude Code, Codex CLI.",
 };
@@ -220,13 +220,13 @@ describe("parseThemeIds", () => {
   });
 });
 
-describe("parseNonMacThemeIds", () => {
-  it("reads the string literals of NON_MAC_THEME_IDS", () => {
-    expect(parseNonMacThemeIds(AVAIL_TS)).toEqual(["white", "night"]);
+describe("parseNeutralThemeIds", () => {
+  it("reads the string literals of NEUTRAL_THEME_IDS", () => {
+    expect(parseNeutralThemeIds(AVAIL_TS)).toEqual(["white", "night"]);
   });
 
-  it("throws when NON_MAC_THEME_IDS is absent", () => {
-    expect(() => parseNonMacThemeIds("export const OTHER = [];")).toThrow(/NON_MAC_THEME_IDS/);
+  it("throws when NEUTRAL_THEME_IDS is absent", () => {
+    expect(() => parseNeutralThemeIds("export const OTHER = [];")).toThrow(/NEUTRAL_THEME_IDS/);
   });
 });
 
@@ -255,7 +255,7 @@ describe("checkReadme — clean", () => {
     expect(
       findingsFor({
         supported: "Supported: Codex CLI, Claude Desktop, Claude Code.",
-        themes: "- **3 Themes** — Night, White, Paper on macOS; Windows and Linux offer Night and White.",
+        themes: "- **3 Themes** — Night, White, Paper on macOS and Windows 11; Windows 10 and Linux offer Night and White.",
       }),
     ).toEqual([]);
   });
@@ -360,29 +360,29 @@ describe("checkReadme — themes", () => {
   it("flags the unqualified shape (no platform sentence) and says what shape is expected", () => {
     const findings = findingsFor({ themes: "- **3 Themes** — White, Paper, Night" });
     expect(findings).toHaveLength(1);
-    expect(findings[0]).toMatch(/on macOS; Windows and Linux offer/);
+    expect(findings[0]).toMatch(/on macOS and Windows 11; Windows 10 and Linux offer/);
   });
 
   it("flags a catalog theme missing from the macOS list", () => {
     const findings = findingsFor({
-      themes: "- **3 Themes** — White, Night on macOS; Windows and Linux offer White and Night.",
+      themes: "- **3 Themes** — White, Night on macOS and Windows 11; Windows 10 and Linux offer White and Night.",
     });
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatch(/Paper/i);
   });
 
-  it("flags a Windows/Linux list that is not NON_MAC_THEME_IDS", () => {
+  it("flags a Windows 10/Linux list that is not NEUTRAL_THEME_IDS", () => {
     const findings = findingsFor({
-      themes: "- **3 Themes** — White, Paper, Night on macOS; Windows and Linux offer White and Paper.",
+      themes: "- **3 Themes** — White, Paper, Night on macOS and Windows 11; Windows 10 and Linux offer White and Paper.",
     });
     expect(findings).toHaveLength(1);
-    expect(findings[0]).toMatch(/Windows and Linux/);
+    expect(findings[0]).toMatch(/Windows 10 and Linux/);
     expect(findings[0]).toMatch(/Night/i);
   });
 
   it("flags a count that disagrees with the catalog", () => {
     const findings = findingsFor({
-      themes: "- **6 Themes** — White, Paper, Night on macOS; Windows and Linux offer White and Night.",
+      themes: "- **6 Themes** — White, Paper, Night on macOS and Windows 11; Windows 10 and Linux offer White and Night.",
     });
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatch(/\b6\b/);
@@ -391,7 +391,7 @@ describe("checkReadme — themes", () => {
 
   it("accepts a non-numeric themes claim", () => {
     expect(
-      findingsFor({ themes: "- **Themes** — White, Paper, Night on macOS; Windows and Linux offer White and Night." }),
+      findingsFor({ themes: "- **Themes** — White, Paper, Night on macOS and Windows 11; Windows 10 and Linux offer White and Night." }),
     ).toEqual([]);
   });
 
@@ -426,7 +426,7 @@ describe("run() against a fixture tree", () => {
       "R.md": readme({
         aiNative: "- **AI-Native** — MCP integration for Claude Desktop and Codex CLI.",
         languages: "- **3 Languages** — English · 简体中文 · Português (Brasil). Auto-detected.",
-        themes: "- **4 Themes** — White, Paper, Mint, Night on macOS; Windows and Linux offer White and Night.",
+        themes: "- **4 Themes** — White, Paper, Mint, Night on macOS and Windows 11; Windows 10 and Linux offer White and Night.",
         shortcuts: "- **3 Shortcuts** — All customizable in Settings",
         supported: "Supported: Claude Desktop, Codex CLI.",
       }),
@@ -488,7 +488,7 @@ describe("live tree", () => {
     );
     expect(parseLanguages(read(DEFAULT_PATHS.languages)).map((l) => l.value)).toContain("pt-BR");
     expect(parseThemeIds(read(DEFAULT_PATHS.themes))).toEqual(Object.keys(themes));
-    expect(parseNonMacThemeIds(read(DEFAULT_PATHS.themeAvailability))).toEqual([...NON_MAC_THEME_IDS]);
+    expect(parseNeutralThemeIds(read(DEFAULT_PATHS.themeAvailability))).toEqual([...NEUTRAL_THEME_IDS]);
   });
 
   it("counts DEFAULT_SHORTCUTS entries, which `grep -c defaultKey` overstates", () => {

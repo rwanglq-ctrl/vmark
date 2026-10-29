@@ -16,10 +16,12 @@
  *
  * The exported hook and getter additionally narrow the result to what the
  * platform's native chrome can render (`theme/themeAvailability.ts`): Windows
- * and Linux draw their own title bar and accept only light or dark, so a theme
- * outside that pair would always render half-themed. `appearance.theme` is
- * never mutated, so the user's pick survives a round trip back to macOS.
+ * 10 and Linux draw their own title bar and accept only light or dark, so a
+ * theme outside that pair would always render half-themed. `appearance.theme`
+ * is never mutated, so the user's pick survives a round trip back to macOS or
+ * Windows 11.
  *
+ * @coordinates-with services/theme/nativeThemeCapability.ts — whether the full catalog renders
  * @coordinates-with stores/systemAppearanceStore.ts — OS dark-mode observation
  * @coordinates-with stores/settingsStore.ts — appearance preferences
  * @module hooks/useEffectiveTheme
@@ -33,6 +35,7 @@ import { coerceThemeId } from "@/theme/themeAvailability";
 import { isMacPlatform } from "@/utils/platform";
 import { getOmarchyAppearance, subscribeOmarchyAppearance } from "@/theme/omarchyAppearance";
 import { useSyncExternalStore } from "react";
+import { offersFullThemeCatalog } from "@/services/theme/nativeThemeCapability";
 
 type EffectiveThemeInput = Pick<
   AppearanceSettings,
@@ -55,10 +58,11 @@ export function resolveEffectiveThemeId(
  * Resolve, then narrow to what this platform's native chrome can render.
  *
  * Kept separate from `resolveEffectiveThemeId` so that stays pure and
- * platform-agnostic: it resolves, it doesn't validate. Windows/Linux only
- * draw light or dark chrome, so a theme outside that pair would always render
- * half-themed. `appearance.theme` is never mutated, so the user's original
- * pick survives a round trip back to macOS.
+ * platform-agnostic: it resolves, it doesn't validate. Windows 10 and Linux
+ * only draw light or dark chrome, so a theme outside that pair would always
+ * render half-themed; macOS and Windows 11 render the full catalog
+ * (`services/theme/nativeThemeCapability.ts`). `appearance.theme` is never
+ * mutated, so the user's original pick survives a round trip between them.
  */
 function resolveForPlatform(
   appearance: EffectiveThemeInput,
@@ -68,7 +72,7 @@ function resolveForPlatform(
   if (appearance.followSystemAppearance && system) return system.theme.isDark ? "night" : "white";
   return coerceThemeId(
     resolveEffectiveThemeId(appearance, prefersDark),
-    isMacPlatform()
+    offersFullThemeCatalog()
   );
 }
 

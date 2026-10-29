@@ -23,8 +23,8 @@ Elige entre seis temas de color. El tema activo se indica con un anillo alrededo
 | Night | `#23262B` | Pizarra oscura para poca luz |
 | Solarized | `#002B36` | Solarized Dark, la paleta clásica |
 
-::: info Windows y Linux solo ofrecen White y Night
-En Windows y Linux el sistema dibuja la barra de título (y, en Windows, la barra de menús), y solo puede ser clara u oscura. Por eso esas plataformas ofrecen únicamente **White** y **Night**, y un tema que no puede coincidir con el marco del sistema se muestra como el más cercano de los dos: Paper, Mint y Sepia se muestran como White, Solarized como Night. Tu elección guardada no cambia — en macOS está disponible el catálogo completo.
+::: info Windows 10 y Linux solo ofrecen White y Night
+En Windows 10 y Linux el sistema dibuja la barra de título, y solo puede ser clara u oscura. Por eso esas plataformas ofrecen únicamente **White** y **Night**, y un tema que no puede coincidir con el marco del sistema se muestra como el más cercano de los dos: Paper, Mint y Sepia se muestran como White, Solarized como Night. Tu elección guardada no cambia — en macOS y Windows 11 está disponible el catálogo completo. En Windows 11 la barra de título adopta los colores del propio tema; la barra de menús se sigue dibujando clara u oscura.
 :::
 
 #### Seguir la apariencia del sistema

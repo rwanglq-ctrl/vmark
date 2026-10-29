@@ -20,7 +20,6 @@
     "src-tauri/src/shell_integration.rs": 1,
     "src-tauri/src/temp_html.rs": 1,
     "src-tauri/src/webview_edit.rs": 1,
-    "src-tauri/src/window_manager/native_theme.rs": 1,
     "src-tauri/src/window_manager/settings_window.rs": 1,
     "src-tauri/src/window_status/mod.rs": 1,
     "src-tauri/src/ai_provider/mod.rs": 1,

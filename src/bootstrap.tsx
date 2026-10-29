@@ -1,9 +1,10 @@
 /**
  * App bootstrap — the startup sequence `main.tsx` runs before first paint.
  *
- * Purpose: fill the secure-storage cache, bind the composition-root seams
- *   (tab-existence guard, plugin host settings, format registry) while that
- *   cache's IPCs are in flight, and only then load and mount App.
+ * Purpose: fill the secure-storage cache and learn the native theme
+ *   capability, bind the composition-root seams (tab-existence guard, plugin
+ *   host settings, format registry) while those IPCs are in flight, and only
+ *   then load and mount App.
  *
  * Key decisions:
  *   - App is loaded through `loadApp`, which `main.tsx` passes as
@@ -27,6 +28,7 @@ import { setTabExistenceGuard } from "@/stores/documentStore";
 import { bindPluginHostSettings } from "@/services/assembly/bindHostSettings";
 import { useTabStore } from "@/stores/tabStore";
 import { platformRootClass } from "@/utils/platform";
+import { loadNativeThemeCapability } from "@/services/theme/nativeThemeCapability";
 
 /** Secure-storage keys App's stores hydrate from at module evaluation. */
 const SECURE_KEYS = ["vmark-ai-providers"];
@@ -44,6 +46,10 @@ export async function bootstrap(loadApp: AppLoader): Promise<void> {
   // while the store's IPCs are in flight. index.html modulepreloads the App
   // chunk, so its download overlaps them too. initSecureStorage never rejects.
   const secureStorageReady = initSecureStorage(SECURE_KEYS);
+  // In parallel with it: whether this window's native chrome can follow every
+  // theme (Windows 11). Known before first render, so a tinted theme paints as
+  // itself from the first frame instead of as White first. Never rejects.
+  const nativeThemeReady = loadNativeThemeCapability();
 
   // C1 defense-in-depth: teach documentStore.initDocument to skip writes for
   // tabs that no longer exist (closed mid-file-read). Wired here at the
@@ -75,7 +81,7 @@ export async function bootstrap(loadApp: AppLoader): Promise<void> {
 
   // App (and its transitive Zustand stores) only evaluate AFTER the secure
   // storage cache is populated.
-  await secureStorageReady;
+  await Promise.all([secureStorageReady, nativeThemeReady]);
   const { default: App } = await loadApp();
 
   const rootElement = document.getElementById("root");
