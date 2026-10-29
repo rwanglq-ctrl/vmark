@@ -35,6 +35,12 @@ Su Windows e Linux è il sistema a disegnare la barra del titolo (e, su Windows,
 
 Quando è attiva, la singola riga del tema viene sostituita da due righe — **Tema chiaro** (usato mentre il sistema è in modalità chiara, predefinito Paper) e **Tema scuro** (usato in modalità scura, predefinito Night). VMark passa dall'uno all'altro nel momento in cui cambia l'aspetto del sistema; la tua scelta manuale del tema viene conservata e ripristinata quando disattivi l'opzione.
 
+### Barra laterale
+
+| Impostazione | Descrizione | Predefinito | Opzioni |
+|-------------|-------------|-------------|---------|
+| Stile della barra laterale | Come vengono incorniciate la barra laterale e la barra delle aree di lavoro. **Altezza piena** le affianca al bordo della finestra con un sottile divisore, come le barre laterali di macOS; **Scheda** le fa fluttuare nella finestra con angoli arrotondati e un'ombra. Vale anche per la finestra delle impostazioni | Altezza piena | Altezza piena, Scheda |
+
 ### Finestra
 
 | Impostazione | Descrizione | Predefinito |
@@ -141,7 +147,7 @@ Due spazi è lo stile di interruzione rigida più compatibile — funziona su Gi
 
 | Impostazione | Descrizione | Predefinito | Opzioni |
 |-------------|-------------|-------------|---------|
-| Modalità Sorgente automatica | Apri i file oltre 1 MB in modalità Sorgente (salta WYSIWYG per mantenere prestazioni fluide). Puoi passare a WYSIWYG dalla barra di stato in qualsiasi momento | Attivo | Attivo / Off |
+| Modalità Sorgente automatica | Apri i file di grandi dimensioni in modalità Sorgente — file oltre 1 MB o Markdown con 1.200+ blocchi stimati (salta WYSIWYG per mantenere prestazioni fluide). Puoi passare a WYSIWYG dalla barra di stato in qualsiasi momento | Attivo | Attivo / Off |
 | Avvisa sopra la dimensione | Mostra una richiesta di conferma prima di aprire file oltre 5 MB. I file di 50 MB o più vengono sempre rifiutati | Attivo | Attivo / Off |
 
 Vedi [File di grandi dimensioni](/it/guide/large-files) per la suddivisione completa di come vengono gestiti i file di grandi dimensioni.
@@ -449,7 +455,7 @@ Configura il pannello terminale integrato. Apri il terminale con `` Ctrl + ` ``.
 | Cursore Lampeggiante | Se il cursore del terminale lampeggia | Attivo | Attivo / Off |
 | Copia alla Selezione | Copia automaticamente il testo selezionato nel terminale negli appunti | Off | Attivo / Off |
 | Visualizza automaticamente le trascrizioni | Mostra Markdown, tabelle e diagrammi Mermaid di Claude/Codex accanto alla CLI del terminale. Aggiunge un hook SessionStart locale alla configurazione di Claude Code e Codex; riavvia le sessioni CLI attive dopo l'attivazione | Off | Attivo / Off |
-| Renderer WebGL | Usa il rendering con accelerazione GPU per il terminale. Disabilita se si verificano problemi di input IME. Richiede il riavvio del terminale | Attivo | Attivo / Off |
+| Renderer WebGL | Usa il rendering con accelerazione GPU per il terminale. Disabilita se si verificano problemi di input IME. Richiede il riavvio del terminale. Solo macOS e Windows — Linux usa sempre il renderer DOM | Attivo | Attivo / Off |
 | Appunti remoti (OSC 52) | Consente ai programmi in esecuzione nel terminale — via ssh, dentro tmux — di copiare negli appunti di sistema. Il canale è di sola scrittura: la lettura degli appunti è sempre rifiutata, poiché qualsiasi output stampato nel terminale potrebbe richiederla | Attivo | Attivo / Off |
 | Cronologia di scorrimento | Numero di righe di output che ogni sessione conserva nella cronologia di scorrimento. Valori più alti usano più memoria | 5.000 | 1.000 / 5.000 / 10.000 / 50.000 |
 | Modalità screen reader | Rende l'output del terminale accessibile alle tecnologie assistive (VoiceOver). Disattivata per impostazione predefinita per motivi di prestazioni | Off | Attivo / Off |

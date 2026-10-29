@@ -640,9 +640,9 @@ describe("scheduleTiptapFocusAndRestore", () => {
     expect(scrollTop).toBe(0);
   });
 
-  it("leaves the viewport to the cursor restore when a cursor exists (#1249)", () => {
-    // A remembered offset must NOT override cursor restoration: the cursor also
-    // carries the WYSIWYG↔Source position mapping.
+  it("leaves the viewport to the cursor restore on a tab's first show (#1249)", () => {
+    // Nothing on screen yet to return to, so the cursor (which also carries the
+    // WYSIWYG↔Source mapping) wins. Returns: tiptapFocus.tabSwitch.test.ts.
     clearEditorScrollOffsets("tab-clicked");
     setEditorScrollOffset("tab-clicked", "wysiwyg", 900);
 
@@ -673,7 +673,7 @@ describe("scheduleTiptapFocusAndRestore", () => {
     globalThis.requestAnimationFrame = originalRaf;
     clearEditorScrollOffsets("tab-clicked");
 
-    expect(restoreCursor).toHaveBeenCalledTimes(1);
+    expect(restoreCursor).toHaveBeenCalledWith(view, { contentLineIndex: 3 }, true);
     expect(scrollTop).toBe(0);
   });
 
@@ -753,5 +753,19 @@ describe("scheduleTiptapFocusAndRestore", () => {
     globalThis.requestAnimationFrame = originalRaf;
 
     expect(focus).toHaveBeenCalledTimes(1);
+  });
+  it("restores without taking focus while its split pane is unfocused (#1554)", () => {
+    const focus = vi.fn();
+    const view = { dom: { isConnected: true, parentElement: null }, focus, dispatch: vi.fn(), state: {} } as unknown as EditorView;
+    const editor = { isDestroyed: false, view } as TiptapEditor;
+    const restoreCursor = vi.fn();
+    const originalRaf = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => (cb(0), 1)) as typeof requestAnimationFrame;
+    const cursor = { contentLineIndex: 0 } as never;
+    scheduleTiptapFocusAndRestore(editor, () => cursor, restoreCursor, "tab-1", () => false);
+    scheduleTiptapFocusAndRestore(editor, () => null, restoreCursor, "tab-1", () => false);
+    globalThis.requestAnimationFrame = originalRaf;
+    expect(focus).not.toHaveBeenCalled();
+    expect(restoreCursor).toHaveBeenCalledTimes(1);
   });
 });

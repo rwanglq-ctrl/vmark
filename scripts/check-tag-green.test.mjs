@@ -413,6 +413,10 @@ describe("check-tag-green.sh — identical-tree fallback", () => {
     });
     expect(status).toBe(1);
     expect(stderr).toContain("missing");
+    // A squash or rebase merge is the usual way to get here: its parent is the
+    // old main, so no checked commit has its tree. Say so, and name the fix.
+    expect(stderr).toContain("no ancestor has its tree");
+    expect(stderr).toContain("gh pr merge --merge");
   });
 
   it("refuses when the identical-tree ancestor is itself red", () => {

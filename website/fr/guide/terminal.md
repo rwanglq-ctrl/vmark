@@ -66,9 +66,15 @@ Lorsque le terminal a le focus, `Mod + =` / `-` / `0` agrandissent ou réduisent
 
 La navigation entre les invites (`Mod + ↑` / `Mod + ↓`) nécessite l'intégration du shell — voir [Intégration du shell](#integration-du-shell) ci-dessous.
 
+**Linux :** `Ctrl` + une lettre va au shell, donc les touches readline comme `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` et `Ctrl + W` fonctionnent comme dans tout terminal Linux. Les raccourcis à lettre propres au terminal passent sur `Ctrl + Shift` : `Ctrl + Shift + F` recherche, `Ctrl + Shift + K` efface, `Ctrl + Shift + A` sélectionne tout, et `Ctrl + Shift + C` / `Ctrl + Shift + V` copient et collent. `Ctrl + C` copie toujours une sélection (sinon il envoie SIGINT) et `Ctrl + V` colle toujours ; `Ctrl + Insert` / `Shift + Insert` copient et collent aussi.
+
 ::: tip
 `Mod + C` sans sélection de texte envoie SIGINT au processus en cours d'exécution — identique à appuyer sur Ctrl+C dans un terminal ordinaire.
 :::
+
+## Lire l’historique tout en tapant
+
+Faites défiler vers le haut pour relire la sortie précédente et continuez à taper : la vue reste où vous êtes, et une **invite flottante** apparaît en bas du terminal avec une copie en direct des lignes dans lesquelles vous tapez — l’invite du shell, ou la zone de saisie d’une TUI comme Claude Code. Les touches vont toujours au shell : la complétion par Tab, l’historique et les méthodes de saisie fonctionnent comme d’habitude. Cliquez sur la flèche à son extrémité droite pour revenir à l’invite ; elle disparaît d’elle-même dès que l’invite est de nouveau visible. Appuyer sur Entrée ou Ctrl+C y ramène aussi, pour voir ce que fait ensuite la commande — ou l’invite envoyée à une TUI ; toute autre touche, y compris Maj+Entrée, laisse la vue en place. Les programmes plein écran (vim, less) n’ont pas d’historique, elle n’y apparaît donc jamais.
 
 ## Recherche
 
@@ -153,6 +159,7 @@ VMark définit ces variables d'environnement dans chaque session de terminal :
 |----------|--------|
 | `TERM` | `xterm-256color` |
 | `TERM_PROGRAM` | `WezTerm` |
+| `TERM_PROGRAM_VERSION` | `20240203-110809-5046fc22` |
 | `VMARK_WORKSPACE` | Chemin racine de l'espace de travail (lorsqu'un dossier est ouvert) |
 | `PATH` | PATH complet du shell de connexion (identique à votre terminal système) |
 | `COLORTERM` | `truecolor` |
@@ -193,6 +200,22 @@ Sauf si vous choisissez un shell dans les paramètres du terminal, VMark lance v
 Les raccourcis shell standard comme `Ctrl+R` (recherche d'historique inversée dans zsh/bash) fonctionnent lorsque le terminal est mis au point — ils ne sont pas interceptés par l'éditeur.
 
 Lorsque la racine de l'espace de travail change alors que le terminal est déjà en cours d'exécution, les sessions inactives effectuent automatiquement `cd` vers la nouvelle racine. Une session occupée par une commande (par exemple `vim` ou `less`) n'est pas interrompue : elle change de répertoire une fois la commande terminée, ce qui nécessite l'[intégration du shell](#integration-du-shell) pour être détecté. Avec la [barre des espaces de travail](/fr/guide/workspace-rail) activée, les sessions qui appartiennent à un espace de travail conservent leur propre répertoire.
+
+## Outils CLI d'IA et leur propre accès au navigateur
+
+Un outil CLI d'IA comme Claude Code ou Codex CLI s'exécute comme un programme ordinaire dans le terminal. VMark lui fournit trois choses distinctes, et les distinguer rend le diagnostic d'une configuration défaillante beaucoup plus simple :
+
+| Quoi | Qui le fournit | Ce que cela permet à la CLI |
+|---|---|---|
+| Le terminal | VMark | Exécuter des commandes avec votre shell de connexion et votre `PATH`, comme dans n'importe quelle fenêtre de terminal |
+| VMark MCP | VMark, après l'installation de sa configuration dans **Paramètres → Intégrations** | Lire et écrire le document ouvert dans VMark via les propres outils MCP de VMark |
+| Outils de navigateur | Le client d'IA, pas VMark | Atteindre un navigateur via l'intégration propre au client, par exemple une extension Chrome ou un serveur d'automatisation de navigateur |
+
+VMark ne configure pas, ne sert pas d'intermédiaire et ne garantit pas les outils de navigateur. Une connexion au navigateur se vérifie en lisant le titre réel d'une page depuis la session : un code de sortie nul et un nom d'outil dans le catalogue ne prouvent ni l'un ni l'autre. L'installation de l'extension, la connectivité de l'application de bureau, la découverte des outils et l'accès effectif à la page sont quatre vérifications distinctes.
+
+Les frontières de redémarrage comptent. Un processus CLI fraîchement démarré peut encore parler à un serveur d'application d'arrière-plan partagé démarré plus tôt ; les versions du client et du serveur peuvent donc différer. Notez les deux lors du diagnostic. Le terminal de VMark ne redémarre pas ces processus et ne les isole pas pour vous.
+
+N'activez pas le débogage à distance, ne copiez pas de dérogations de confiance et n'assouplissez pas les contrôles du pont natif pour faire fonctionner une connexion au navigateur. Cela élargit le modèle de permissions pour chaque page que le navigateur peut atteindre, et un résultat obtenu ainsi n'est pas une recette de configuration.
 
 ## Micro, caméra et Apple Events sur macOS
 
@@ -253,7 +276,7 @@ Chaque terminal suit exactement sa propre session plutôt que la transcription m
 | Cloche du terminal | Désactivée / Visuelle / Sonore | Visuelle |
 | Contraste minimum | Désactivé / WCAG AA (4,5:1) / WCAG AAA (7:1) / Maximum | WCAG AA (4,5:1) |
 
-La plupart des modifications s'appliquent immédiatement à toutes les sessions ouvertes — taille et position du panneau, taille de police, interligne, curseur, Copier à la sélection, Option comme touche Meta, Historique de défilement, Mode lecteur d'écran, Cloche du terminal et Contraste minimum. **Shell**, le **Rendu WebGL**, le **Presse-papiers distant** et l'**Intégration du shell** sont fixés au démarrage d'une session ; ils s'appliquent donc aux sessions ouvertes ensuite. **Taille du panneau** va jusqu'à 80 % de l'espace disponible. L'éditeur conserve une taille minimale en pixels, de sorte qu'il ne disparaît jamais entièrement, quelle que soit la taille du terminal. Double-cliquez sur la poignée de redimensionnement pour passer directement au maximum et revenir, sans modifier la taille enregistrée. **Option comme touche Meta** route la touche Option de macOS comme Meta dans le terminal intégré pour qu'emacs, tmux et les outils similaires voient les raccourcis préfixés par Alt (macOS uniquement) ; ce paramètre est activé par défaut, de sorte qu'Option+Flèche déplace le curseur par mot au lieu d'insérer des caractères accentués. **Intégration du shell** est disponible sur macOS et Linux (masqué sous Windows). **Presse-papiers distant** fonctionne en écriture seule (les lectures sont toujours refusées) et est décrit ci-dessous. **Historique de défilement** détermine le nombre de lignes de sortie que chaque session conserve dans son historique — des valeurs plus élevées consomment plus de mémoire. **Mode lecteur d'écran** expose la sortie du terminal aux technologies d'assistance comme VoiceOver ; il est désactivé par défaut pour des raisons de performance. **Cloche du terminal** choisit comment une cloche (BEL) est signalée — une marque visuelle d'activité en arrière-plan sur l'onglet de session, un léger bip sonore (qui signale aussi l'onglet d'une session en arrière-plan pour que vous la retrouviez), ou rien. **Contraste minimum** rehausse le texte pâle du terminal jusqu'à un rapport de contraste lisible par rapport à son arrière-plan ; augmentez-le pour l'accessibilité ou réglez-le sur Désactivé pour supprimer ce rehaussement.
+La plupart des modifications s'appliquent immédiatement à toutes les sessions ouvertes — taille et position du panneau, taille de police, interligne, curseur, Copier à la sélection, Option comme touche Meta, Historique de défilement, Mode lecteur d'écran, Cloche du terminal et Contraste minimum. **Shell**, le **Rendu WebGL** (non disponible sous Linux), le **Presse-papiers distant** et l'**Intégration du shell** sont fixés au démarrage d'une session ; ils s'appliquent donc aux sessions ouvertes ensuite. **Taille du panneau** va jusqu'à 80 % de l'espace disponible. L'éditeur conserve une taille minimale en pixels, de sorte qu'il ne disparaît jamais entièrement, quelle que soit la taille du terminal. Double-cliquez sur la poignée de redimensionnement pour passer directement au maximum et revenir, sans modifier la taille enregistrée. **Option comme touche Meta** route la touche Option de macOS comme Meta dans le terminal intégré pour qu'emacs, tmux et les outils similaires voient les raccourcis préfixés par Alt (macOS uniquement) ; ce paramètre est activé par défaut, de sorte qu'Option+Flèche déplace le curseur par mot au lieu d'insérer des caractères accentués. **Intégration du shell** est disponible sur macOS et Linux (masqué sous Windows). **Presse-papiers distant** fonctionne en écriture seule (les lectures sont toujours refusées) et est décrit ci-dessous. **Historique de défilement** détermine le nombre de lignes de sortie que chaque session conserve dans son historique — des valeurs plus élevées consomment plus de mémoire. **Mode lecteur d'écran** expose la sortie du terminal aux technologies d'assistance comme VoiceOver ; il est désactivé par défaut pour des raisons de performance. **Cloche du terminal** choisit comment une cloche (BEL) est signalée — une marque visuelle d'activité en arrière-plan sur l'onglet de session, un léger bip sonore (qui signale aussi l'onglet d'une session en arrière-plan pour que vous la retrouviez), ou rien. **Contraste minimum** rehausse le texte pâle du terminal jusqu'à un rapport de contraste lisible par rapport à son arrière-plan ; augmentez-le pour l'accessibilité ou réglez-le sur Désactivé pour supprimer ce rehaussement.
 
 ::: tip Famille de police du terminal
 Le terminal utilise la **Police mono** de **Paramètres → Éditeur**, et non une

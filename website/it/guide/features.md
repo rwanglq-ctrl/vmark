@@ -59,9 +59,10 @@ attivare la modalità Sorgente o la Vista divisa, o far ricaricare il file dal d
 riportano tutti dove stavi leggendo — non all'inizio.
 
 Ogni superficie ricorda la propria posizione, quindi Rich Text e Sorgente mantengono punti
-separati nello stesso file. Se hai posizionato un cursore nel documento, il cursore
-ha comunque la precedenza: tornando atterri sul cursore, ed è anche questo che mantiene
-in vista lo stesso paragrafo quando passi da Rich Text a Sorgente e viceversa.
+separati nello stesso file. Tornare alla stessa superficie — cambiando scheda o quando il file
+viene ricaricato — ti riporta dove avevi fatto scorrere la vista, anche se il cursore è altrove;
+il cursore resta dove l'hai lasciato. Passando da Rich Text a Sorgente e viceversa, invece, la
+vista segue il cursore, se c'è, perché è questo che mantiene in vista lo stesso paragrafo in entrambe.
 
 Le posizioni sono per documento e per sessione — chiudere una scheda le dimentica.
 
@@ -71,7 +72,7 @@ Annulla e ripristina attraversano il confine WYSIWYG ⇄ Sorgente. Ogni cambio d
 
 ### File di Grandi Dimensioni
 
-VMark apre automaticamente in modalità Sorgente i file oltre 1 MB per un'apertura in meno di un secondo, avvisa prima di toccare file oltre 5 MB e rifiuta i file oltre 50 MB. Vedi la guida ai [File di grandi dimensioni](./large-files.md) per soglie e impostazioni.
+VMark apre automaticamente in modalità Sorgente i file di grandi dimensioni per un'apertura in meno di un secondo — file oltre 1 MB o Markdown denso di blocchi con 1.200+ blocchi stimati —, avvisa prima di toccare file oltre 5 MB e rifiuta i file oltre 50 MB. Vedi la guida ai [File di grandi dimensioni](./large-files.md) per soglie e impostazioni.
 
 ### Anteprima Sorgente
 
@@ -487,7 +488,8 @@ La barra di stato corre lungo il fondo della finestra (`F7` la nasconde). Il lat
 | Lint | ⊗ errori o ⚠ avvisi trovati dall'ultima esecuzione del [lint](#lint-markdown); nascosto quando non ce ne sono | Salta al problema successivo |
 | IA | Mentre un genie è in esecuzione, *In elaborazione...* con i secondi trascorsi e una × per annullare; poi *Fatto*, oppure l'errore con **Riprova**, che esegue di nuovo la richiesta fallita, e **Ignora**; Riprova non compare quando non c'è nulla da ripetere, per esempio senza provider | — |
 | MCP | Un'icona a forma di satellite, colorata quando un client IA è connesso; la parola *off*, *…* o *error* quando non è in esecuzione normalmente. Il tooltip indica i client connessi | Apre **Impostazioni → Integrazioni** |
-| Cronologia MCP | Le scritture dell'IA in questa scheda, dalla più recente, ciascuna con **Ripristina allo stato precedente a questa scrittura**; un pulsante cestino cancella la cronologia della scheda senza chiedere | Apre l'elenco |
+| Listener MCP | Un avviso, *MCP non disponibile in questa finestra*, quando il listener delle richieste di questa finestra non è riuscito ad avviarsi dopo tutti i tentativi: i client di IA non raggiungono questa finestra, anche se il server MCP è in esecuzione. Riavvia VMark per riprovare | — |
+| Cronologia MCP | Un'icona della cronologia con il numero di versioni IA del documento attivo, in colore di avviso quando le sue modifiche non vengono registrate; il pannello mostra chi ha fatto ogni versione, con **Ripristina questa versione** e **Ripristina lo stato precedente a questa modifica**, oltre ai [Checkpoint precedenti](/it/guide/mcp-setup#checkpoint-delle-modifiche) | Apre il pannello |
 | Terminale | — | Mostra o nasconde il terminale |
 | Modalità | La modalità corrente — Sorgente o WYSIWYG (nascosta per i file di workflow di GitHub Actions) | Cambia modalità |
 | Lucchetto | Se il documento è in sola lettura | Attiva/disattiva la sola lettura |

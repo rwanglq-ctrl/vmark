@@ -289,23 +289,6 @@ fn ancient_migration_fills_unset_fields_from_default() {
     assert!(config.identity.is_none());
 }
 
-// ----- exclude cleaning -------------------------------------------------
-
-#[test]
-fn clean_excludes_strips_only_dot_vmark() {
-    let out = clean_excludes(vec![
-        ".git".to_string(),
-        ".vmark".to_string(),
-        "node_modules".to_string(),
-    ]);
-    assert_eq!(out, vec![".git".to_string(), "node_modules".to_string()]);
-}
-
-#[test]
-fn clean_excludes_on_empty_list_is_empty() {
-    assert!(clean_excludes(vec![]).is_empty());
-}
-
 #[test]
 fn test_default_workspace_config() {
     let config = WorkspaceConfig::default();
@@ -340,8 +323,8 @@ fn test_migrate_from_legacy_directory_format() {
         .unwrap();
     assert!(config.show_hidden_files);
     assert!(config.last_open_tabs.contains(&"doc.md".to_string()));
-    // .vmark should be stripped from exclude_folders
-    assert!(!config.exclude_folders.contains(&".vmark".to_string()));
+    // The legacy tree survives, so its exclusion carries over unchanged.
+    assert!(config.exclude_folders.contains(&".vmark".to_string()));
     assert!(config.exclude_folders.contains(&".git".to_string()));
 }
 
@@ -364,7 +347,7 @@ fn test_migrate_from_legacy_ancient_file_format() {
     assert!(config
         .exclude_folders
         .contains(&"legacy_folder".to_string()));
-    assert!(!config.exclude_folders.contains(&".vmark".to_string()));
+    assert!(config.exclude_folders.contains(&".vmark".to_string()));
     assert!(config.last_open_tabs.contains(&"old.md".to_string()));
 }
 
@@ -373,54 +356,6 @@ fn test_migrate_from_legacy_nothing() {
     let dir = tempdir().unwrap();
     let result = migrate_from_legacy(dir.path().to_str().unwrap()).unwrap();
     assert!(result.is_none());
-}
-
-#[test]
-fn test_cleanup_old_vmark_directory() {
-    let dir = tempdir().unwrap();
-    let root = dir.path();
-
-    // Create .vmark directory with workspace file
-    let vmark_dir = root.join(".vmark");
-    fs::create_dir_all(&vmark_dir).unwrap();
-    fs::write(vmark_dir.join("vmark.code-workspace"), "{}").unwrap();
-
-    cleanup_old_vmark(root.to_str().unwrap());
-
-    // Directory should be removed (was empty after file removal)
-    assert!(!vmark_dir.exists());
-}
-
-#[test]
-fn test_cleanup_old_vmark_directory_non_empty() {
-    let dir = tempdir().unwrap();
-    let root = dir.path();
-
-    // Create .vmark directory with extra file
-    let vmark_dir = root.join(".vmark");
-    fs::create_dir_all(&vmark_dir).unwrap();
-    fs::write(vmark_dir.join("vmark.code-workspace"), "{}").unwrap();
-    fs::write(vmark_dir.join("other-file"), "keep").unwrap();
-
-    cleanup_old_vmark(root.to_str().unwrap());
-
-    // Directory should still exist (has other files)
-    assert!(vmark_dir.exists());
-    // But workspace file should be gone
-    assert!(!vmark_dir.join("vmark.code-workspace").exists());
-}
-
-#[test]
-fn test_cleanup_old_vmark_file() {
-    let dir = tempdir().unwrap();
-    let root = dir.path();
-
-    // Create .vmark as plain file
-    fs::write(root.join(".vmark"), "{}").unwrap();
-
-    cleanup_old_vmark(root.to_str().unwrap());
-
-    assert!(!root.join(".vmark").exists());
 }
 
 #[test]

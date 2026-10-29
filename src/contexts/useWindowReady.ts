@@ -13,9 +13,9 @@
  * A document window waits for FACTS, not a duration. Two of them, because Rust
  * acts on `ready` in two ways: it starts sending menu events, and it starts
  * sending close and quit requests. `useCommandBootstrap` signals once the
- * single Tauri menu listener is actually mounted — it gets there via an
- * `await`ed dynamic import, so the 100 ms constant this replaced could not
- * bound it — and `useWindowClose` signals once its close and quit listeners
+ * menu listeners are actually mounted — IPC round trips that the 100 ms
+ * constant this replaced could not bound — and `useWindowClose` signals once
+ * its close and quit listeners
  * are registered. Announcing on the first alone left a gap in which a quit
  * request, sent once, reached no listener. Each wait is budgeted and its
  * expiry is logged, so a barrier that never signals degrades to the old
@@ -23,11 +23,15 @@
  *
  * That same moment is the only honest answer to "is this app drivable yet?", so
  * it is PUBLISHED to the DOM as well as to Rust — see {@link READY_ATTRIBUTE}.
+ * And it is when the document surface may mount: a document window ARMS
+ * `windowListening` as it starts waiting, and the announcement opens it, so
+ * building a document's view cannot starve the listeners being waited on.
  *
  * @coordinates-with WindowContext.tsx — sole consumer
  * @coordinates-with services/commands/menuCommandsReady.ts — the menu-listener barrier a document window waits on
  * @coordinates-with services/windowClose/closeListenersReady.ts — the close/quit-listener barrier it also waits on
  * @coordinates-with e2e/lib/readiness.mjs — the automation harness reads the attribute
+ * @coordinates-with contexts/windowListening.ts — the document surface's gate, opened on announcing
  * @module contexts/useWindowReady
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,6 +39,7 @@ import { windowContextError } from "@/utils/debug";
 import { isDocumentWindowLabel } from "@/utils/windowLabels";
 import { waitForMenuCommands } from "@/services/commands/menuCommandsReady";
 import { waitForCloseListeners } from "@/services/windowClose/closeListenersReady";
+import { armWindowListening, publishWindowListening } from "./windowListening";
 
 /**
  * How long a document window will wait for its menu listener before giving up
@@ -87,6 +92,9 @@ interface ReadyTarget {
 export function useWindowReady(): { isReady: boolean; markReady: (w: ReadyTarget) => void } {
   const [isReady, setIsReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The window a no-barrier announcement is scheduled for, kept so a StrictMode
+  // replay can schedule it again after the simulated unmount cleared the timer.
+  const timerTargetRef = useRef<ReadyTarget | null>(null);
   // Latches the announcement so five call sites cannot start five of them, and
   // records unmount so a barrier that resolves afterwards writes nothing.
   const announcingRef = useRef(false);
@@ -116,10 +124,14 @@ export function useWindowReady(): { isReady: boolean; markReady: (w: ReadyTarget
       // reports what this window has finished doing — mounting its listeners
       // — not whether Rust acknowledged it.
       document.documentElement.setAttribute(READY_ATTRIBUTE, "true");
+      publishWindowListening();
     }
   }, []);
 
   const markReady = useCallback((w: ReadyTarget) => {
+    // Before the render `setIsReady` causes, so a document window's surface
+    // is held from its very first render.
+    if (isDocumentWindowLabel(w.label)) armWindowListening();
     setIsReady(true);
     // Idempotent by construction. The timer version overwrote `timerRef` and
     // left the previous timer ORPHANED — still scheduled, still firing,
@@ -131,6 +143,7 @@ export function useWindowReady(): { isReady: boolean; markReady: (w: ReadyTarget
     announcingRef.current = true;
 
     if (!isDocumentWindowLabel(w.label)) {
+      timerTargetRef.current = w;
       timerRef.current = setTimeout(() => announce(w), NO_BARRIER_DELAY_MS);
       return;
     }
@@ -168,13 +181,26 @@ export function useWindowReady(): { isReady: boolean; markReady: (w: ReadyTarget
     // published — so the second lifecycle's markReady can restart a chain the
     // simulated unmount swallowed, while a COMPLETED announcement stays
     // latched (announcedRef) and can never emit twice.
+    //
+    // A cleared no-barrier timer is scheduled again here, not by a second
+    // markReady: the provider's init is once-only, so in a settings or
+    // pdf-export window the replay never calls markReady, and the window
+    // never announced itself in dev builds.
     unmountedRef.current = false;
-    if (!announcedRef.current) announcingRef.current = false;
+    if (!announcedRef.current) {
+      announcingRef.current = false;
+      const target = timerTargetRef.current;
+      if (target && timerRef.current === null) {
+        announcingRef.current = true;
+        timerRef.current = setTimeout(() => announce(target), NO_BARRIER_DELAY_MS);
+      }
+    }
     return () => {
       unmountedRef.current = true;
       if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = null;
     };
-  }, []);
+  }, [announce]);
 
   return { isReady, markReady };
 }

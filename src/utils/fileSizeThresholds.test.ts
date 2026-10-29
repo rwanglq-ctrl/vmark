@@ -4,6 +4,7 @@ import {
   FILE_SIZE_THRESHOLDS,
   classifyFileSize,
   shouldShowProgressIndicator,
+  shouldSourceModeForBlocks,
   formatFileSize,
 } from "./fileSizeThresholds";
 
@@ -60,6 +61,27 @@ describe("shouldShowProgressIndicator", () => {
   it("returns false for non-finite inputs", () => {
     expect(shouldShowProgressIndicator(Number.NaN)).toBe(false);
     expect(shouldShowProgressIndicator(Number.POSITIVE_INFINITY)).toBe(false);
+  });
+});
+
+describe("shouldSourceModeForBlocks", () => {
+  const { SOURCE_MODE_DEFAULT_BLOCKS } = FILE_SIZE_THRESHOLDS;
+
+  it("routes at or above the block threshold", () => {
+    expect(shouldSourceModeForBlocks(SOURCE_MODE_DEFAULT_BLOCKS)).toBe(true);
+    expect(shouldSourceModeForBlocks(SOURCE_MODE_DEFAULT_BLOCKS + 1)).toBe(true);
+    expect(shouldSourceModeForBlocks(3_773)).toBe(true);
+  });
+
+  it("stays in WYSIWYG below the block threshold", () => {
+    expect(shouldSourceModeForBlocks(0)).toBe(false);
+    expect(shouldSourceModeForBlocks(SOURCE_MODE_DEFAULT_BLOCKS - 1)).toBe(false);
+    expect(shouldSourceModeForBlocks(1_170)).toBe(false);
+  });
+
+  it("returns false for non-finite inputs", () => {
+    expect(shouldSourceModeForBlocks(Number.NaN)).toBe(false);
+    expect(shouldSourceModeForBlocks(Number.NEGATIVE_INFINITY)).toBe(false);
   });
 });
 

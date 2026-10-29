@@ -59,9 +59,10 @@ alternar el modo Fuente o la Vista Dividida, o que el archivo se vuelva a cargar
 devuelven a donde estabas leyendo — no al principio.
 
 Cada superficie recuerda su propia posición, así que Texto Enriquecido y Fuente guardan lugares
-separados en el mismo archivo. Si has puesto un cursor en el documento, el cursor
-sigue mandando: al volver llegas al cursor, que es también lo que mantiene
-el mismo párrafo a la vista cuando cambias entre Texto Enriquecido y Fuente.
+separados en el mismo archivo. Volver a la misma superficie — al cambiar de pestaña o al recargarse
+el archivo — te devuelve a donde habías desplazado la vista, aunque el cursor esté en otro sitio;
+el cursor se queda donde lo dejaste. Al cambiar entre Texto Enriquecido y Fuente, en cambio, la
+vista sigue al cursor, si lo hay, porque es lo que mantiene el mismo párrafo a la vista en ambos.
 
 Las posiciones son por documento y por sesión — cerrar una pestaña la olvida.
 
@@ -71,7 +72,7 @@ Deshacer y rehacer cruzan la frontera WYSIWYG ⇄ Fuente. Cada cambio de modo re
 
 ### Archivos Grandes
 
-VMark abre automáticamente en modo Fuente los archivos de más de 1 MB para que se abran en menos de un segundo, avisa antes de tocar archivos de más de 5 MB y rechaza los de más de 50 MB. Consulta la guía de [Archivos grandes](./large-files.md) para ver los umbrales y la configuración.
+VMark abre automáticamente en modo Fuente los archivos grandes para que se abran en menos de un segundo — archivos de más de 1 MB o markdown con muchos bloques y 1.200+ bloques estimados —, avisa antes de tocar archivos de más de 5 MB y rechaza los de más de 50 MB. Consulta la guía de [Archivos grandes](./large-files.md) para ver los umbrales y la configuración.
 
 ### Vista Previa de Fuente
 
@@ -487,7 +488,8 @@ La barra de estado recorre la parte inferior de la ventana (`F7` la oculta). El 
 | Lint | ⊗ errores o ⚠ advertencias encontrados por la última ejecución de [lint](#lint-de-markdown); oculto cuando no hay ninguno | Salta al siguiente problema |
 | IA | Mientras se ejecuta un genio, *Pensando...* con los segundos transcurridos y una × para cancelar; después *Listo*, o el error con **Reintentar**, que vuelve a ejecutar la solicitud fallida, y **Descartar**; Reintentar no aparece si no hay nada que repetir, por ejemplo sin proveedor | — |
 | MCP | Un icono de satélite, coloreado cuando hay un cliente de IA conectado; la palabra *off*, *…* o *error* cuando no funciona con normalidad. La información emergente nombra los clientes conectados | Abre **Configuración → Integraciones** |
-| Historial MCP | Las escrituras de la IA en esta pestaña, de la más reciente a la más antigua, cada una con **Restaurar al estado anterior a esta escritura**; un botón de papelera borra el historial de la pestaña sin preguntar | Abre la lista |
+| Receptor MCP | Una advertencia, *MCP no disponible en esta ventana*, cuando el receptor de solicitudes de esta ventana no pudo iniciarse tras todos los reintentos: los clientes de IA no llegan a esta ventana, aunque el servidor MCP esté en marcha. Reinicia VMark para volver a intentarlo | — |
+| Historial MCP | Un icono de historial con el número de versiones de IA del documento enfocado, en color de advertencia cuando sus cambios no se registran; el panel muestra quién hizo cada versión, con **Restaurar esta versión** y **Restaurar al estado anterior a este cambio**, además de [Puntos de control anteriores](/es/guide/mcp-setup#puntos-de-control-de-edicion) | Abre el panel |
 | Terminal | — | Muestra u oculta el terminal |
 | Modo | El modo actual — Fuente o WYSIWYG (oculto en los archivos de flujo de trabajo de GitHub Actions) | Cambia de modo |
 | Candado | Si el documento es de solo lectura | Alterna solo lectura |

@@ -11,6 +11,318 @@ section as part of the version bump (`.claude/rules/40-version-bump.md`).
 
 ## [Unreleased]
 
+## [0.9.106] - 2026-10-28
+
+### Added
+
+- **Choose how the sidebar looks.** Settings → Appearance → Sidebar has a new
+  **Sidebar style**: **Full height** (the default) runs the sidebar from the
+  top of the window to the bottom with a thin divider, as macOS 27 apps do;
+  **Card** keeps the earlier rounded, inset card.
+
+### Fixed
+
+- **The sidebar's header buttons no longer get cut off.** Dragging the sidebar
+  to its narrowest pushed New File and New Folder past its edge. The narrowest
+  sidebar is now 220px, wide enough for every button, and the view title
+  shortens with an ellipsis before any button is hidden.
+- **Search finds text that wraps onto the next source line** (#1590). A query
+  such as "a chat assis" missed text whose words were split by a soft line
+  break; the break now counts as a space when searching outside code blocks.
+- Updated the Tauri plugins and other dependencies to their latest patch
+  releases.
+
+## [0.9.105] - 2026-10-28
+
+### Fixed
+
+- **Right-click menus open at the pointer again.** Since 0.9.55 the editor's
+  right-click menu and the image menu opened in the window's top-left corner,
+  pushed the rest of the window sideways while open, and could leave the
+  selection highlight behind after they closed. Both now open where you click,
+  over the page, and close cleanly.
+- **Find in Files accepts two-character searches** (#1598). The minimum was
+  three characters, which blocked common two-character Chinese, Japanese and
+  Korean words such as 选址 or 招聘. Two characters is now enough, counted the
+  same way for every script, and the "type at least" hint is translated.
+
+## [0.9.104] - 2026-10-28
+
+### Added
+
+- **A durable, reviewable history of AI edits** (#1591). Every edit an AI
+  client makes through VMark's MCP tools is now recorded before it changes
+  anything, in an edit history that survives restarts. The status-bar
+  **history** button opens a panel that lists each revision with when it
+  happened, the tool, and who made it: the client's provider, connection and
+  session. Set `VMARK_SESSION_LABEL` in a client's MCP configuration to tell
+  its sessions apart. A client with no token, an unknown token or a shared
+  token is shown as such, never as the name it gives itself. Any revision can
+  be restored, or the document put back to just before it.
+- **Review AI changes one by one.** *Review AI Changes* groups the changes you
+  have not reviewed yet by client and session. **Keep** or **Revert** each one,
+  and undo either. A revert that would overwrite text you edited since is not
+  applied: the change is marked as conflicting, so your own edits are never
+  lost to it.
+- **Comments you can hand back to the AI.** Select text and choose
+  **Comment on selection** to start a thread. Threads can be replied to, and are open,
+  addressed, resolved or reopened. A new MCP tool, `comments`, lets an AI
+  client read your comments, reply, and mark them addressed. Resolving stays
+  with you. An edit can say which comments it answers, and the history shows
+  the link.
+- **Export Edit History to Git.** *File → Document History → Export Edit
+  History to Git…* copies a document's history into a Git repository as one
+  commit per revision, on a branch of its own. Exporting again adds only what
+  is new.
+
+### Changed
+
+- AI edit replies now say whether the edit was recorded (`applied`,
+  `durable`). New refusals (`JOURNAL_BUSY`, `STALE_PARENT`,
+  `JOURNAL_DEGRADED`, `JOURNAL_UNAVAILABLE`, `INVALID_TEXT`,
+  `REVIEW_BACKLOG_FULL`, `ABORTED`) change nothing, so a client can safely
+  re-read and retry. See the MCP tools guide.
+- Checkpoints from earlier versions are imported once and listed under
+  **Earlier checkpoints** in the history panel.
+
+### Fixed
+
+- Saves to one file now land in the order they were asked for, across
+  documents and windows. A save that a later one has already overtaken is
+  reported as stale instead of silently overwriting it.
+- A **Save As** from an AI client never replaces a file that is not the
+  document's own, even one created while the save was in flight.
+
+### Security
+
+- Dependencies with published security advisories are updated to their
+  patched releases, among them DOMPurify, markdown-it, the MCP SDK, undici,
+  rustls-webpki and tokio.
+
+## [0.9.103] - 2026-10-20
+
+### Fixed
+
+- Opening a workspace no longer deletes the `.vmark` folder inside it. VMark
+  migrates the old `.vmark/vmark.code-workspace` settings into its own app data
+  and then used to remove that file and the folder — in a repository that
+  tracks them in git, the first open destroyed tracked files with no prompt
+  and no undo (#1579). The legacy file is now left exactly as it was, and a
+  `.vmark` entry in the workspace's excluded folders still applies.
+
+### Changed
+
+- The terminal guide now separates VMark's integrated terminal, VMark's MCP
+  tools, and the browser tools an AI client such as Codex CLI may have of its
+  own. It also explains how to verify that a browser connection really read the
+  page, and why remote debugging or copied trust overrides are not the way to
+  make one work (#1571).
+
+### Security
+
+- The edit-checkpoint history VMark keeps for AI changes is now private to your
+  user account (`0600` on macOS and Linux) and can be inspected and cleared
+  from the status-bar history popover. Its footer shows how much space the
+  checkpoint file occupies on disk, and **Clear all checkpoint history**
+  removes it for every file and every open window (#1580). Checkpoints still
+  hold the full previous text of each recorded edit — that text is what restore
+  uses.
+
+## [0.9.102] - 2026-10-20
+
+### Fixed
+
+- Opening a Markdown file made of many short blocks no longer freezes the
+  window. WYSIWYG builds a node for every block, so a 524 KB document with
+  3,773 blocks could keep the window unresponsive for 31–35 seconds on Linux.
+  VMark now estimates the block count before opening and sends block-dense
+  documents (1,200 or more estimated blocks) to Source mode, which opens in
+  about a second (#1570). The status bar's **Switch to WYSIWYG** link still
+  opens it in WYSIWYG on request, and the **Open large files in Source mode**
+  setting turns the automatic routing off.
+
+## [0.9.101] - 2026-10-17
+
+### Fixed
+
+- Large, image-heavy documents open much faster, and the window no longer
+  gives up waiting for its menus while one loads (#1565). Images now load
+  only as they scroll near the screen, the window sets up its menus before
+  it builds the document, and long CJK documents no longer spend seconds
+  laying out decorations. On a slow machine, a 484 KB document with 338
+  images opens about a quarter faster and uses less memory.
+- CJK letter spacing is no longer worked out in WYSIWYG mode while the
+  setting is off. Before, every CJK run was processed anyway, which slowed
+  down opening long documents for no visible change.
+- Saving in the instant before a just-opened document has loaded no longer
+  empties it. On a slow machine that instant could last seconds.
+- Fixed several cases where a highlight or other editor marking drew in the
+  wrong place, or vanished, after an edit that wrapped, lifted or moved
+  blocks.
+
+### Security
+
+- The updater no longer includes the `zip` library, which three newly
+  published advisories cover (RUSTSEC-2026-0367 to 0369). It was only there
+  to unpack an old update format that VMark does not publish.
+
+## [0.9.100] - 2026-10-16
+
+### Fixed
+
+- Exporting to PDF or HTML embeds local images again. Since the symlink
+  check for exported images was added, every local image was replaced with
+  "Image not found", on every platform (#1555). Re-exporting an HTML folder
+  over an earlier export no longer fails for the same reason, and a failed
+  image check is now logged with its cause.
+- Switching between tabs returns each document to where you were reading.
+  Before, a document with a cursor in it always jumped back to that cursor,
+  even after you had scrolled away (#1556). Switching between WYSIWYG and
+  Source mode still follows the cursor.
+- Pressing F6 in a two-document split no longer makes the window flicker
+  endlessly between the two documents (#1554). Both panes now share one view
+  mode, and clicking a pane no longer switches the window to that
+  document's saved mode. Clicking a heading in the outline now moves only
+  the focused pane.
+
+### Security
+
+- Updated `rustls`, which VMark uses for its network connections, past four
+  newly published advisories (RUSTSEC-2026-0346 to 0349).
+
+## [0.9.99] - 2026-10-13
+
+### Changed
+
+- Updated Tauri to 2.12.2, the editor engine (Tiptap 3.31.4 and its
+  ProseMirror packages), Mermaid 12.1, KaTeX 0.19 and the diagram renderer
+  (Graphviz 16.1), along with other routine dependency updates. The trusted
+  HTML preview's isolation was re-checked against the new Tauri release: a
+  previewed document still cannot reach VMark.
+
+### Security
+
+- Updated `quinn-proto` past five newly published advisories
+  (RUSTSEC-2026-0338 to 0342). It was listed among VMark's dependencies but
+  not built into the app, so no released version was exposed.
+
+## [0.9.98] - 2026-10-12
+
+### Added
+
+- Terminal: scroll up to read earlier output and keep typing. While the
+  prompt is out of view, a floating copy of the rows you are typing into —
+  the shell prompt, or the input box of a tool such as Claude Code — appears
+  at the bottom of the terminal, and typing no longer snaps the view back
+  down. Keys still go to the shell, so tab completion, history and input
+  methods work as before. Pressing Enter or Ctrl+C, or clicking the arrow on
+  the floating row, jumps back to the prompt. Thanks to @ijerrywong for the
+  idea and the implementation (#1545).
+
+### Security
+
+- Genie, workflow and GitHub Action YAML files are now read by a parser
+  written in safe Rust. The previous one was built on an unmaintained
+  machine translation of C code (RUSTSEC-2024-0449). Files that parsed before
+  parse the same way: only `true` and `false` count as booleans, and a
+  duplicate key is still an error.
+
+## [0.9.97] - 2026-10-10
+
+### Fixed
+
+- In rich-text mode, a few unlisted shortcuts inherited from the editor
+  library (Cmd+Option+0 to 6, Cmd+Shift+7 and Cmd+Shift+8; Ctrl on Windows and
+  Linux) no longer reformat text behind VMark's back. Pressed inside a code
+  block they could turn the whole block into a heading or a list and lose its
+  fence. VMark's own heading and list shortcuts are unchanged.
+
+## [0.9.96] - 2026-10-09
+
+### Fixed
+
+- On Windows, launching VMark while an earlier VMark is stuck in the
+  background no longer starts a broken second copy that shows an empty
+  window. VMark now explains that the earlier process is not responding and
+  asks you to end it in Task Manager before starting again
+  ([#1527](https://github.com/xiaolai/vmark/issues/1527)).
+- On Windows and Linux, VMark no longer retries a browser setting every few
+  seconds in the background, which filled the log with
+  "embedded browser surface is macOS-only" warnings.
+
+## [0.9.95] - 2026-10-09
+
+### Fixed
+
+- The first press of Cmd+Q is now clearly acknowledged. VMark asks for a
+  second press to quit, but the "press again" hint could go unseen when no
+  window had focus (for example after choosing Quit from the menu) or when
+  the status bar was hidden, so quitting looked broken
+  ([#1528](https://github.com/xiaolai/vmark/issues/1528)).
+- The welcome screen no longer cuts off its title and buttons when a long
+  list of recent files and workspaces is taller than the window; you can
+  scroll back to the top.
+- On Windows and Linux, if opening a second VMark window fails during a
+  relaunch and no window is left, VMark now exits instead of staying alive as
+  an invisible process that blocks every later launch. This is a partial fix
+  for [#1527](https://github.com/xiaolai/vmark/issues/1527); the underlying
+  cause of the reported crash is still being investigated.
+
+### Security
+
+- Updated the MCP SDK used by the AI tool server to 1.31.0, which fixes a
+  high-severity flaw (GHSA-6qxp-vccf-f47h) where its OAuth client could send
+  saved credentials to a server it should not trust.
+
+## [0.9.94] - 2026-10-07
+
+### Changed
+
+- Updated the app framework, Tauri, to 2.12. The protection that keeps a
+  trusted HTML preview from calling into VMark was checked again on the new
+  version.
+
+### Fixed
+
+- Mermaid diagrams in documents no longer go blank when you stop editing
+  them on older macOS versions. A style meant for standalone `.mmd` files was
+  leaking into documents and shrinking diagrams to nothing
+  ([#1215](https://github.com/xiaolai/vmark/issues/1215)).
+
+### Security
+
+- The framework update drops the unmaintained `unic-*` Rust crates, clearing
+  five advisories (RUSTSEC-2025-0075, -0080, -0081, -0098 and -0100).
+
+## [0.9.93] - 2026-10-06
+
+### Changed
+
+- Linux: the terminal follows the usual Linux terminal convention. Plain
+  Ctrl+letter goes to the shell, so readline and editors such as nano and vim
+  get Ctrl+A, Ctrl+K, Ctrl+F and the rest. Ctrl+C copies a selection and
+  otherwise interrupts, and Ctrl+V pastes. Terminal actions use Ctrl+Shift
+  (C, V, A, K, F), plus Ctrl+Insert and Shift+Insert
+  ([#1508](https://github.com/xiaolai/vmark/issues/1508)).
+- Command-line tools in the terminal now print clickable links where they
+  support them.
+
+### Fixed
+
+- The ↓ button in a footnote preview jumps to the footnote text again
+  ([#1506](https://github.com/xiaolai/vmark/issues/1506)).
+- Fast typing in the terminal no longer reaches the shell out of order
+  ([#1507](https://github.com/xiaolai/vmark/issues/1507)).
+- Linux: typed characters in the terminal appear right away instead of one
+  keystroke late. The terminal now always uses its DOM renderer there, and the
+  WebGL option is hidden ([#1511](https://github.com/xiaolai/vmark/issues/1511)).
+- Ctrl+K (Cmd+K on macOS) in the terminal clears it without also reaching the
+  editor's Insert Link shortcut.
+
+### Security
+
+- Updated `source-map-js`, a build-time dependency, for GHSA-68fv-2mgg-jv7q.
+
 ## [0.9.92] - 2026-10-04
 
 ### Added
@@ -144,7 +456,21 @@ section as part of the version bump (`.claude/rules/40-version-bump.md`).
 
 - Raised the `markdown-it` version floor past GHSA-253c-mchw-3w2r.
 
-[Unreleased]: https://github.com/xiaolai/vmark/compare/v0.9.92...HEAD
+[Unreleased]: https://github.com/xiaolai/vmark/compare/v0.9.106...HEAD
+[0.9.106]: https://github.com/xiaolai/vmark/releases/tag/v0.9.106
+[0.9.105]: https://github.com/xiaolai/vmark/releases/tag/v0.9.105
+[0.9.104]: https://github.com/xiaolai/vmark/releases/tag/v0.9.104
+[0.9.103]: https://github.com/xiaolai/vmark/releases/tag/v0.9.103
+[0.9.102]: https://github.com/xiaolai/vmark/releases/tag/v0.9.102
+[0.9.101]: https://github.com/xiaolai/vmark/releases/tag/v0.9.101
+[0.9.100]: https://github.com/xiaolai/vmark/releases/tag/v0.9.100
+[0.9.99]: https://github.com/xiaolai/vmark/releases/tag/v0.9.99
+[0.9.98]: https://github.com/xiaolai/vmark/releases/tag/v0.9.98
+[0.9.97]: https://github.com/xiaolai/vmark/releases/tag/v0.9.97
+[0.9.96]: https://github.com/xiaolai/vmark/releases/tag/v0.9.96
+[0.9.95]: https://github.com/xiaolai/vmark/releases/tag/v0.9.95
+[0.9.94]: https://github.com/xiaolai/vmark/releases/tag/v0.9.94
+[0.9.93]: https://github.com/xiaolai/vmark/releases/tag/v0.9.93
 [0.9.92]: https://github.com/xiaolai/vmark/releases/tag/v0.9.92
 [0.9.91]: https://github.com/xiaolai/vmark/releases/tag/v0.9.91
 [0.9.90]: https://github.com/xiaolai/vmark/releases/tag/v0.9.90

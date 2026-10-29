@@ -121,6 +121,11 @@ gh pr merge --merge --delete-branch
 
 Do **not** tag yet. Wait for the merge.
 
+Use `--merge`, never `--squash` or `--rebase`, including when the bump rides in
+a feature PR. CI runs only on the PR, so the tag gate vouches for the merged
+commit through an ancestor with the same tree: a merge commit's PR-head parent.
+A squash or rebase commit has no such ancestor, and its tag is refused.
+
 ## Phase 6: Tag the merged commit and push
 
 Tag `main` *after* pulling the merge, so the tag names a commit that is on

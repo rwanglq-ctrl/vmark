@@ -75,6 +75,15 @@ updates:
     groups:
       cargo-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Pinned with `=` to the exact versions wry uses (see the comment above
+      # them in src-tauri/Cargo.toml): another version makes the WebView2 COM
+      # types distinct Rust types and the Windows build stops compiling. They
+      # move only together, in the change that bumps Tauri/wry. #1540 bumped
+      # windows-core alone and failed exactly that way.
+      - dependency-name: "windows-core"
+      - dependency-name: "windows"
+      - dependency-name: "webview2-com"
 
   # `/` covers `.github/workflows` only. A composite action under
   # `.github/actions/` carries SHA pins of its own and is updated only when its

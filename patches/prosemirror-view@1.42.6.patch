@@ -1,0 +1,704 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index d52a5260a7b9924b2865053ea1e8c6484225277b..fff9a8d33510c014dc75fa681de7769b3abedb34 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -3885,6 +3885,8 @@ var DecorationSet = function () {
+     _classCallCheck(this, DecorationSet);
+     this.local = local.length ? local : none;
+     this.children = children.length ? children : none;
++    // VMark patch (#1565): where forChild last found its child — a hint only.
++    this.lastChild = 0;
+   }
+   _createClass(DecorationSet, [{
+     key: "find",
+@@ -3921,7 +3923,12 @@ var DecorationSet = function () {
+         var mapped = this.local[i].map(mapping, offset, oldOffset);
+         if (mapped && mapped.type.valid(node, mapped)) (newLocal || (newLocal = [])).push(mapped);else if (options.onRemove) options.onRemove(this.local[i].spec);
+       }
+-      if (this.children.length) return mapChildren(this.children, newLocal || [], mapping, node, offset, oldOffset, options);else return newLocal ? new DecorationSet(newLocal.sort(byPos), none) : empty;
++      if (this.children.length) return mapChildren(this.children, newLocal || [], mapping, node, offset, oldOffset, options);
++      if (!newLocal) return empty;
++      // VMark patch (#1565): see takeMisplacedWidgets.
++      var misplaced = takeMisplacedWidgets(newLocal, node);
++      var set = new DecorationSet(newLocal.sort(byPos), none);
++      return misplaced ? set.addInner(node, misplaced, 0) : set;
+     }
+   }, {
+     key: "add",
+@@ -3933,19 +3940,26 @@ var DecorationSet = function () {
+   }, {
+     key: "addInner",
+     value: function addInner(doc, decorations, offset) {
+-      var _this11 = this;
++      // VMark patch (#1565): one pass over the decorations, not one per
++      // child, and the children merged into a new array in order. Upstream
++      // spliced each new child in, shifting every entry after it.
+       var children,
+-        childIndex = 0;
+-      doc.forEach(function (childNode, childOffset) {
++        old = this.children,
++        j = 0;
++      var taken = takeSpansForChildren(decorations, doc, offset);
++      if (taken) doc.forEach(function (childNode, childOffset, index) {
+         var baseOffset = childOffset + offset,
+           found;
+-        if (!(found = takeSpansForNode(decorations, childNode, baseOffset))) return;
+-        if (!children) children = _this11.children.slice();
+-        while (childIndex < children.length && children[childIndex] < childOffset) childIndex += 3;
+-        if (children[childIndex] == childOffset) children[childIndex + 2] = children[childIndex + 2].addInner(childNode, found, baseOffset + 1);else children.splice(childIndex, 0, childOffset, childOffset + childNode.nodeSize, buildTree(found, childNode, baseOffset + 1, noSpec));
+-        childIndex += 3;
++        if (!(found = taken[index])) return;
++        if (!children) children = [];
++        for (; j < old.length && old[j] < childOffset; j += 3) children.push(old[j], old[j + 1], old[j + 2]);
++        if (old[j] == childOffset) {
++          children.push(old[j], old[j + 1], old[j + 2].addInner(childNode, found, baseOffset + 1));
++          j += 3;
++        } else children.push(childOffset, childOffset + childNode.nodeSize, buildTree(found, childNode, baseOffset + 1, noSpec));
+       });
+-      var local = moveSpans(childIndex ? withoutNulls(decorations) : decorations, -offset);
++      if (children) for (; j < old.length; j++) children.push(old[j]);
++      var local = moveSpans(children ? withoutNulls(decorations) : decorations, -offset);
+       for (var i = 0; i < local.length; i++) if (!local[i].type.valid(doc, local[i])) local.splice(i--, 1);
+       return new DecorationSet(local.length ? this.local.concat(local).sort(byPos) : this.local, children || this.children);
+     }
+@@ -3995,10 +4009,32 @@ var DecorationSet = function () {
+       if (this == empty) return this;
+       if (node.isLeaf) return DecorationSet.empty;
+       var child, local;
+-      for (var i = 0; i < this.children.length; i += 3) if (this.children[i] >= offset) {
+-        if (this.children[i] == offset) child = this.children[i + 2];
+-        break;
++      // VMark patch (#1565): find the first child entry at or after
++      // `offset`. The view asks for the children in order while drawing, so
++      // try the entry the last call found and the one after it, and binary
++      // search otherwise. Upstream scanned from the first child on every
++      // call, which made drawing quadratic in the children.
++      var children = this.children,
++        n = children.length,
++        i = this.lastChild;
++      var at = function at(j) {
++        return j <= n && (j == n || children[j] >= offset) && (j == 0 || children[j - 3] < offset);
++      };
++      if (!at(i)) {
++        if (at(i + 3)) {
++          i += 3;
++        } else {
++          var lo = 0,
++            hi = n / 3;
++          while (lo < hi) {
++            var mid = lo + hi >> 1;
++            if (children[mid * 3] < offset) lo = mid + 1;else hi = mid;
++          }
++          i = lo * 3;
++        }
+       }
++      this.lastChild = i;
++      if (i < n && children[i] == offset) child = children[i + 2];
+       var start = offset + 1,
+         end = start + node.content.size;
+       for (var _i9 = 0; _i9 < this.local.length; _i9++) {
+@@ -4134,6 +4170,15 @@ var DecorationGroup = function () {
+ }();
+ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, options) {
+   var children = oldChildren.slice();
++  // VMark patch (#1565): the per-step positions below follow each map's raw
++  // ranges, which a mirrored mapping (a step and its inverse) does not;
++  // there, gather and rebuild every child from its mapped decorations
++  // (-2: straight to the rebuild, not through the touched-child remap).
++  if (hasMirror(mapping)) {
++    for (var _m = 0; _m < children.length; _m += 3) children[_m + 1] = -2;
++  }
++  // VMark patch (#1565): see takeMisplacedWidgets.
++  var misplaced = takeMisplacedWidgets(newLocal, node);
+   var _loop4 = function _loop4(_baseOffset) {
+     var moved = 0;
+     mapping.maps[i].forEach(function (oldStart, oldEnd, newStart, newEnd) {
+@@ -4154,7 +4199,10 @@ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, op
+     _baseOffset = mapping.maps[i].map(_baseOffset, -1);
+     baseOffset = _baseOffset;
+   };
+-  for (var i = 0, baseOffset = oldOffset; i < mapping.maps.length; i++) {
++  // VMark patch (#1565): only the maps the mapping spans — a slice
++  // (`mapping.slice(from, to)`) shares the whole array. Upstream walked
++  // them all, and shifted children by steps the slice excludes.
++  for (var i = mappingStart(mapping), _end = mappingEnd(mapping), baseOffset = oldOffset; i < _end; i++) {
+     _loop4(baseOffset);
+   }
+   var mustRebuild = false;
+@@ -4164,6 +4212,15 @@ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, op
+       children[_i11 + 1] = -1;
+       continue;
+     }
++    // VMark patch (#1565): a child whose opening or closing token a
++    // step replaced is not the same node, even if one of its size now
++    // stands there. Upstream learned that only from the first step to
++    // touch the child: a later step that cut its opening went unseen,
++    // and the content after the cut kept its old positions.
++    if (mapping.mapResult(oldChildren[_i11] + oldOffset, 1).deletedAfter || mapping.mapResult(oldChildren[_i11 + 1] + oldOffset, -1).deletedBefore) {
++      mustRebuild = true;
++      continue;
++    }
+     var from = mapping.map(oldChildren[_i11] + oldOffset),
+       fromLocal = from - offset;
+     if (fromLocal < 0 || fromLocal >= node.content.size) {
+@@ -4190,21 +4247,111 @@ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, op
+       mustRebuild = true;
+     }
+   }
++  // VMark patch (#1565): a kept child must still start and end where a
++  // child of `node` does. A step can move a child no change touched under a
++  // new parent (a ReplaceAroundStep wrapping it), and upstream kept its
++  // entry at the shifted position, where the view never draws it. One walk
++  // over the node's children, in step with the sorted entries.
++  for (var _w = 0, index = 0, pos = 0; _w < children.length; _w += 3) {
++    var _wFrom = children[_w],
++      _wTo = children[_w + 1];
++    if (_wTo < 0) continue;
++    while (index < node.childCount && pos < _wFrom) pos += node.child(index++).nodeSize;
++    if (pos != _wFrom || index == node.childCount || _wFrom + node.child(index).nodeSize != _wTo) {
++      children[_w + 1] = -1;
++      mustRebuild = true;
++    }
++  }
+   if (mustRebuild) {
+     var decorations = mapAndGatherRemainingDecorations(children, oldChildren, newLocal, mapping, offset, oldOffset, options);
+     var built = buildTree(decorations, node, 0, options);
+     newLocal = built.local;
+-    for (var _i12 = 0; _i12 < children.length; _i12 += 3) if (children[_i12 + 1] < 0) {
+-      children.splice(_i12, 3);
+-      _i12 -= 3;
+-    }
+-    for (var _i13 = 0, j = 0; _i13 < built.children.length; _i13 += 3) {
++    // VMark patch (#1565): drop the gathered entries and merge the rebuilt
++    // ones in, one pass each. Upstream spliced every entry out and in.
++    var kept = [],
++      merged = [],
++      j = 0;
++    for (var _i12 = 0; _i12 < children.length; _i12 += 3) if (children[_i12 + 1] >= 0) kept.push(children[_i12], children[_i12 + 1], children[_i12 + 2]);
++    for (var _i13 = 0; _i13 < built.children.length; _i13 += 3) {
+       var _from2 = built.children[_i13];
+-      while (j < children.length && children[j] < _from2) j += 3;
+-      children.splice(j, 0, built.children[_i13], built.children[_i13 + 1], built.children[_i13 + 2]);
++      for (; j < kept.length && kept[j] < _from2; j += 3) merged.push(kept[j], kept[j + 1], kept[j + 2]);
++      merged.push(built.children[_i13], built.children[_i13 + 1], built.children[_i13 + 2]);
+     }
++    for (; j < kept.length; j++) merged.push(kept[j]);
++    children = merged;
++  }
++  var set = new DecorationSet(newLocal.sort(byPos), children);
++  return misplaced ? set.addInner(node, misplaced, 0) : set;
++}
++// VMark patch (#1565): whether any map in the mapping's span has a mirror
++// inside that span — the only mirrors `Mapping.map` follows.
++function hasMirror(mapping) {
++  if (typeof mapping.getMirror != "function") return false;
++  var start = mappingStart(mapping),
++    end = mappingEnd(mapping);
++  for (var i = start; i < end; i++) {
++    var mirror = mapping.getMirror(i);
++    if (mirror != null && mirror >= start && mirror < end) return true;
+   }
+-  return new DecorationSet(newLocal.sort(byPos), children);
++  return false;
++}
++// VMark patch (#1565): the maps a mapping spans; a mapping without the
++// bounds (from before `Mapping.slice` kept them) spans all of its maps.
++function mappingStart(mapping) {
++  return mapping.from == null ? 0 : mapping.from;
++}
++function mappingEnd(mapping) {
++  return mapping.to == null ? mapping.maps.length : mapping.to;
++}
++// VMark patch (#1565): whether `type`'s content can hold an inline node with
++// content of its own — the only place a textblock's widget can be misplaced
++// (text is a leaf). Read once per node type from its content expression, so
++// typing in a schema without such nodes walks no text.
++var inlineContainers = new WeakMap();
++function holdsInlineContainers(type) {
++  var known = inlineContainers.get(type);
++  if (known === undefined) {
++    known = false;
++    var seen = [type.contentMatch];
++    for (var i = 0; i < seen.length && !known; i++) for (var j = 0; j < seen[i].edgeCount; j++) {
++      var edge = seen[i].edge(j);
++      if (edge.type.isInline && !edge.type.isLeaf) {
++        known = true;
++        break;
++      }
++      if (seen.indexOf(edge.next) < 0) seen.push(edge.next);
++    }
++    inlineContainers.set(type, known);
++  }
++  return known;
++}
++// VMark patch (#1565): a mapped widget can land strictly inside a child of
++// `node` — a wrap puts a new parent's opening token in front of it — and the
++// view draws a level's widgets only between its children, so upstream kept it
++// where it is never drawn. Take such widgets out of `local` (in place) and
++// return them, for the caller to add to the set, which places each in the
++// child that now contains it, as buildTree would have. Null when there are
++// none; one walk over the children otherwise. Text is a leaf, so in a
++// textblock only inline nodes with content take widgets, and a textblock
++// that cannot hold one is not walked.
++function takeMisplacedWidgets(local, node) {
++  if (!node.childCount || node.inlineContent && !holdsInlineContainers(node.type)) return null;
++  var widgets = null;
++  for (var i = 0; i < local.length; i++) if (local[i].type instanceof WidgetType) (widgets || (widgets = [])).push(local[i]);
++  if (!widgets) return null;
++  widgets.sort(byPos);
++  var misplaced = null;
++  for (var _i = 0, index = 0, pos = 0; _i < widgets.length; _i++) {
++    var at = widgets[_i].from;
++    while (index < node.childCount && pos + node.child(index).nodeSize <= at) pos += node.child(index++).nodeSize;
++    if (index < node.childCount && at > pos && !node.child(index).isLeaf) (misplaced || (misplaced = [])).push(widgets[_i]);
++  }
++  if (!misplaced) return null;
++  var taken = new Set(misplaced),
++    kept = 0;
++  for (var _j = 0; _j < local.length; _j++) if (!taken.has(local[_j])) local[kept++] = local[_j];
++  local.length = kept;
++  return misplaced;
+ }
+ function moveSpans(spans, offset) {
+   if (!offset || !spans.length) return spans;
+@@ -4226,15 +4373,51 @@ function mapAndGatherRemainingDecorations(children, oldChildren, decorations, ma
+   for (var i = 0; i < children.length; i += 3) if (children[i + 1] == -1) gather(children[i + 2], oldChildren[i] + oldOffset + 1);
+   return decorations;
+ }
+-function takeSpansForNode(spans, node, offset) {
+-  if (node.isLeaf) return null;
+-  var end = offset + node.nodeSize,
+-    found = null;
+-  for (var i = 0, span; i < spans.length; i++) {
+-    if ((span = spans[i]) && span.from > offset && span.to < end) {
+-      (found || (found = [])).push(span);
+-      spans[i] = null;
++// VMark patch (#1565): give every span to the child node that strictly
++// contains it in one pass, finding that child by binary search over the
++// children's start positions. Upstream calls takeSpansForNode once per child,
++// scanning every span each time: quadratic for a node with many decorated
++// children. Same result: a span goes to the one non-leaf child with
++// start < from and to < end, buckets keep input order, and taken spans are
++// nulled out of `spans`. A node whose children are all leaves (a textblock
++// of text) takes nothing, as upstream's per-child leaf check concluded. A
++// reversed span (from > to, invalid and dropped later) can meet that test in
++// several children; it goes to the first, as upstream's scan gave it.
++function takeSpansForChildren(spans, node, offset) {
++  var count = node.childCount;
++  if (!count || !spans.length) return null;
++  var starts = new Array(count),
++    ends = new Array(count),
++    pos = offset,
++    container = false;
++  for (var i = 0; i < count; i++) {
++    var child = node.child(i);
++    if (!child.isLeaf) container = true;
++    starts[i] = pos;
++    pos += child.nodeSize;
++    ends[i] = pos;
++  }
++  if (!container) return null;
++  var found = null;
++  for (var _i = 0, span; _i < spans.length; _i++) {
++    if (!(span = spans[_i])) continue;
++    var k = void 0;
++    if (span.from > span.to) {
++      for (k = 0; k < count; k++) if (starts[k] < span.from && span.to < ends[k] && !node.child(k).isLeaf) break;
++      if (k == count) continue;
++    } else {
++      var lo = 0,
++        hi = count;
++      while (lo < hi) {
++        var mid = lo + hi >> 1;
++        if (starts[mid] < span.from) lo = mid + 1;else hi = mid;
++      }
++      k = lo - 1;
++      if (k < 0 || span.to >= ends[k] || node.child(k).isLeaf) continue;
+     }
++    if (!found) found = new Array(count);
++    if (found[k]) found[k].push(span);else found[k] = [span];
++    spans[_i] = null;
+   }
+   return found;
+ }
+@@ -4246,8 +4429,10 @@ function withoutNulls(array) {
+ function buildTree(spans, node, offset, options) {
+   var children = [],
+     hasNulls = false;
+-  node.forEach(function (childNode, localStart) {
+-    var found = takeSpansForNode(spans, childNode, localStart + offset);
++  // VMark patch (#1565): one pass over the spans, not one per child.
++  var taken = takeSpansForChildren(spans, node, offset);
++  if (taken) node.forEach(function (childNode, localStart, index) {
++    var found = taken[index];
+     if (found) {
+       hasNulls = true;
+       var subtree = buildTree(found, childNode, offset + localStart + 1, options);
+diff --git a/dist/index.js b/dist/index.js
+index dc0d117b85e1da3eae915b4d8ff8e5e604683861..0c76a213bef90bae77132a9b5aed2f55c461b949 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -4148,6 +4148,8 @@ class DecorationSet {
+     constructor(local, children) {
+         this.local = local.length ? local : none;
+         this.children = children.length ? children : none;
++        // VMark patch (#1565): where forChild last found its child — a hint only.
++        this.lastChild = 0;
+     }
+     /**
+     Create a set of decorations, using the structure of the given
+@@ -4206,8 +4208,12 @@ class DecorationSet {
+         }
+         if (this.children.length)
+             return mapChildren(this.children, newLocal || [], mapping, node, offset, oldOffset, options);
+-        else
+-            return newLocal ? new DecorationSet(newLocal.sort(byPos), none) : empty;
++        if (!newLocal)
++            return empty;
++        // VMark patch (#1565): see takeMisplacedWidgets.
++        let misplaced = takeMisplacedWidgets(newLocal, node);
++        let set = new DecorationSet(newLocal.sort(byPos), none);
++        return misplaced ? set.addInner(node, misplaced, 0) : set;
+     }
+     /**
+     Add the given array of decorations to the ones in the set,
+@@ -4223,22 +4229,30 @@ class DecorationSet {
+         return this.addInner(doc, decorations, 0);
+     }
+     addInner(doc, decorations, offset) {
+-        let children, childIndex = 0;
+-        doc.forEach((childNode, childOffset) => {
++        // VMark patch (#1565): one pass over the decorations, not one per
++        // child, and the children merged into a new array in order. Upstream
++        // spliced each new child in, shifting every entry after it.
++        let children, old = this.children, j = 0;
++        let taken = takeSpansForChildren(decorations, doc, offset);
++        if (taken) doc.forEach((childNode, childOffset, index) => {
+             let baseOffset = childOffset + offset, found;
+-            if (!(found = takeSpansForNode(decorations, childNode, baseOffset)))
++            if (!(found = taken[index]))
+                 return;
+             if (!children)
+-                children = this.children.slice();
+-            while (childIndex < children.length && children[childIndex] < childOffset)
+-                childIndex += 3;
+-            if (children[childIndex] == childOffset)
+-                children[childIndex + 2] = children[childIndex + 2].addInner(childNode, found, baseOffset + 1);
++                children = [];
++            for (; j < old.length && old[j] < childOffset; j += 3)
++                children.push(old[j], old[j + 1], old[j + 2]);
++            if (old[j] == childOffset) {
++                children.push(old[j], old[j + 1], old[j + 2].addInner(childNode, found, baseOffset + 1));
++                j += 3;
++            }
+             else
+-                children.splice(childIndex, 0, childOffset, childOffset + childNode.nodeSize, buildTree(found, childNode, baseOffset + 1, noSpec));
+-            childIndex += 3;
++                children.push(childOffset, childOffset + childNode.nodeSize, buildTree(found, childNode, baseOffset + 1, noSpec));
+         });
+-        let local = moveSpans(childIndex ? withoutNulls(decorations) : decorations, -offset);
++        if (children)
++            for (; j < old.length; j++)
++                children.push(old[j]);
++        let local = moveSpans(children ? withoutNulls(decorations) : decorations, -offset);
+         for (let i = 0; i < local.length; i++)
+             if (!local[i].type.valid(doc, local[i]))
+                 local.splice(i--, 1);
+@@ -4298,12 +4312,32 @@ class DecorationSet {
+         if (node.isLeaf)
+             return DecorationSet.empty;
+         let child, local;
+-        for (let i = 0; i < this.children.length; i += 3)
+-            if (this.children[i] >= offset) {
+-                if (this.children[i] == offset)
+-                    child = this.children[i + 2];
+-                break;
++        // VMark patch (#1565): find the first child entry at or after
++        // `offset`. The view asks for the children in order while drawing, so
++        // try the entry the last call found and the one after it, and binary
++        // search otherwise. Upstream scanned from the first child on every
++        // call, which made drawing quadratic in the children.
++        let children = this.children, n = children.length, i = this.lastChild;
++        let at = (j) => j <= n && (j == n || children[j] >= offset) && (j == 0 || children[j - 3] < offset);
++        if (!at(i)) {
++            if (at(i + 3)) {
++                i += 3;
+             }
++            else {
++                let lo = 0, hi = n / 3;
++                while (lo < hi) {
++                    let mid = (lo + hi) >> 1;
++                    if (children[mid * 3] < offset)
++                        lo = mid + 1;
++                    else
++                        hi = mid;
++                }
++                i = lo * 3;
++            }
++        }
++        this.lastChild = i;
++        if (i < n && children[i] == offset)
++            child = children[i + 2];
+         let start = offset + 1, end = start + node.content.size;
+         for (let i = 0; i < this.local.length; i++) {
+             let dec = this.local[i];
+@@ -4443,9 +4477,22 @@ class DecorationGroup {
+ }
+ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, options) {
+     let children = oldChildren.slice();
++    // VMark patch (#1565): the per-step positions below follow each map's raw
++    // ranges, which a mirrored mapping (a step and its inverse) does not;
++    // there, gather and rebuild every child from its mapped decorations
++    // (-2: straight to the rebuild, not through the touched-child remap).
++    if (hasMirror(mapping)) {
++        for (let i = 0; i < children.length; i += 3)
++            children[i + 1] = -2;
++    }
++    // VMark patch (#1565): see takeMisplacedWidgets.
++    let misplaced = takeMisplacedWidgets(newLocal, node);
+     // Mark the children that are directly touched by changes, and
+     // move those that are after the changes.
+-    for (let i = 0, baseOffset = oldOffset; i < mapping.maps.length; i++) {
++    // VMark patch (#1565): only the maps the mapping spans — a slice
++    // (`mapping.slice(from, to)`) shares the whole array. Upstream walked
++    // them all, and shifted children by steps the slice excludes.
++    for (let i = mappingStart(mapping), end = mappingEnd(mapping), baseOffset = oldOffset; i < end; i++) {
+         let moved = 0;
+         mapping.maps[i].forEach((oldStart, oldEnd, newStart, newEnd) => {
+             let dSize = (newEnd - newStart) - (oldEnd - oldStart);
+@@ -4476,6 +4523,16 @@ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, op
+                 children[i + 1] = -1;
+                 continue;
+             }
++            // VMark patch (#1565): a child whose opening or closing token a
++            // step replaced is not the same node, even if one of its size now
++            // stands there. Upstream learned that only from the first step to
++            // touch the child: a later step that cut its opening went unseen,
++            // and the content after the cut kept its old positions.
++            if (mapping.mapResult(oldChildren[i] + oldOffset, 1).deletedAfter ||
++                mapping.mapResult(oldChildren[i + 1] + oldOffset, -1).deletedBefore) {
++                mustRebuild = true;
++                continue;
++            }
+             let from = mapping.map(oldChildren[i] + oldOffset), fromLocal = from - offset;
+             if (fromLocal < 0 || fromLocal >= node.content.size) {
+                 mustRebuild = true;
+@@ -4502,24 +4559,126 @@ function mapChildren(oldChildren, newLocal, mapping, node, offset, oldOffset, op
+                 mustRebuild = true;
+             }
+         }
++    // VMark patch (#1565): a kept child must still start and end where a
++    // child of `node` does. A step can move a child no change touched under a
++    // new parent (a ReplaceAroundStep wrapping it), and upstream kept its
++    // entry at the shifted position, where the view never draws it. One walk
++    // over the node's children, in step with the sorted entries.
++    for (let i = 0, index = 0, pos = 0; i < children.length; i += 3) {
++        let from = children[i], to = children[i + 1];
++        if (to < 0)
++            continue;
++        while (index < node.childCount && pos < from)
++            pos += node.child(index++).nodeSize;
++        if (pos != from || index == node.childCount || from + node.child(index).nodeSize != to) {
++            children[i + 1] = -1;
++            mustRebuild = true;
++        }
++    }
+     // Remaining children must be collected and rebuilt into the appropriate structure
+     if (mustRebuild) {
+         let decorations = mapAndGatherRemainingDecorations(children, oldChildren, newLocal, mapping, offset, oldOffset, options);
+         let built = buildTree(decorations, node, 0, options);
+         newLocal = built.local;
++        // VMark patch (#1565): drop the gathered entries and merge the rebuilt
++        // ones in, one pass each. Upstream spliced every entry out and in.
++        let kept = [], merged = [], j = 0;
+         for (let i = 0; i < children.length; i += 3)
+-            if (children[i + 1] < 0) {
+-                children.splice(i, 3);
+-                i -= 3;
+-            }
+-        for (let i = 0, j = 0; i < built.children.length; i += 3) {
++            if (children[i + 1] >= 0)
++                kept.push(children[i], children[i + 1], children[i + 2]);
++        for (let i = 0; i < built.children.length; i += 3) {
+             let from = built.children[i];
+-            while (j < children.length && children[j] < from)
+-                j += 3;
+-            children.splice(j, 0, built.children[i], built.children[i + 1], built.children[i + 2]);
++            for (; j < kept.length && kept[j] < from; j += 3)
++                merged.push(kept[j], kept[j + 1], kept[j + 2]);
++            merged.push(built.children[i], built.children[i + 1], built.children[i + 2]);
+         }
++        for (; j < kept.length; j++)
++            merged.push(kept[j]);
++        children = merged;
+     }
+-    return new DecorationSet(newLocal.sort(byPos), children);
++    let set = new DecorationSet(newLocal.sort(byPos), children);
++    return misplaced ? set.addInner(node, misplaced, 0) : set;
++}
++// VMark patch (#1565): whether any map in the mapping's span has a mirror
++// inside that span — the only mirrors `Mapping.map` follows.
++function hasMirror(mapping) {
++    if (typeof mapping.getMirror != "function")
++        return false;
++    let start = mappingStart(mapping), end = mappingEnd(mapping);
++    for (let i = start; i < end; i++) {
++        let mirror = mapping.getMirror(i);
++        if (mirror != null && mirror >= start && mirror < end)
++            return true;
++    }
++    return false;
++}
++// VMark patch (#1565): the maps a mapping spans; a mapping without the
++// bounds (from before `Mapping.slice` kept them) spans all of its maps.
++function mappingStart(mapping) {
++    return mapping.from == null ? 0 : mapping.from;
++}
++function mappingEnd(mapping) {
++    return mapping.to == null ? mapping.maps.length : mapping.to;
++}
++// VMark patch (#1565): whether `type`'s content can hold an inline node with
++// content of its own — the only place a textblock's widget can be misplaced
++// (text is a leaf). Read once per node type from its content expression, so
++// typing in a schema without such nodes walks no text.
++const inlineContainers = new WeakMap();
++function holdsInlineContainers(type) {
++    let known = inlineContainers.get(type);
++    if (known === undefined) {
++        known = false;
++        let seen = [type.contentMatch];
++        for (let i = 0; i < seen.length && !known; i++)
++            for (let j = 0; j < seen[i].edgeCount; j++) {
++                let edge = seen[i].edge(j);
++                if (edge.type.isInline && !edge.type.isLeaf) {
++                    known = true;
++                    break;
++                }
++                if (seen.indexOf(edge.next) < 0)
++                    seen.push(edge.next);
++            }
++        inlineContainers.set(type, known);
++    }
++    return known;
++}
++// VMark patch (#1565): a mapped widget can land strictly inside a child of
++// `node` — a wrap puts a new parent's opening token in front of it — and the
++// view draws a level's widgets only between its children, so upstream kept it
++// where it is never drawn. Take such widgets out of `local` (in place) and
++// return them, for the caller to add to the set, which places each in the
++// child that now contains it, as buildTree would have. Null when there are
++// none; one walk over the children otherwise. Text is a leaf, so in a
++// textblock only inline nodes with content take widgets, and a textblock
++// that cannot hold one is not walked.
++function takeMisplacedWidgets(local, node) {
++    if (!node.childCount || node.inlineContent && !holdsInlineContainers(node.type))
++        return null;
++    let widgets = null;
++    for (let i = 0; i < local.length; i++)
++        if (local[i].type instanceof WidgetType)
++            (widgets || (widgets = [])).push(local[i]);
++    if (!widgets)
++        return null;
++    widgets.sort(byPos);
++    let misplaced = null;
++    for (let i = 0, index = 0, pos = 0; i < widgets.length; i++) {
++        let at = widgets[i].from;
++        while (index < node.childCount && pos + node.child(index).nodeSize <= at)
++            pos += node.child(index++).nodeSize;
++        if (index < node.childCount && at > pos && !node.child(index).isLeaf)
++            (misplaced || (misplaced = [])).push(widgets[i]);
++    }
++    if (!misplaced)
++        return null;
++    let taken = new Set(misplaced), kept = 0;
++    for (let i = 0; i < local.length; i++)
++        if (!taken.has(local[i]))
++            local[kept++] = local[i];
++    local.length = kept;
++    return misplaced;
+ }
+ function moveSpans(spans, offset) {
+     if (!offset || !spans.length)
+@@ -4549,15 +4708,63 @@ function mapAndGatherRemainingDecorations(children, oldChildren, decorations, ma
+             gather(children[i + 2], oldChildren[i] + oldOffset + 1);
+     return decorations;
+ }
+-function takeSpansForNode(spans, node, offset) {
+-    if (node.isLeaf)
++// VMark patch (#1565): give every span to the child node that strictly
++// contains it in one pass, finding that child by binary search over the
++// children's start positions. Upstream calls takeSpansForNode once per child,
++// scanning every span each time: quadratic for a node with many decorated
++// children. Same result: a span goes to the one non-leaf child with
++// start < from and to < end, buckets keep input order, and taken spans are
++// nulled out of `spans`. A node whose children are all leaves (a textblock
++// of text) takes nothing, as upstream's per-child leaf check concluded. A
++// reversed span (from > to, invalid and dropped later) can meet that test in
++// several children; it goes to the first, as upstream's scan gave it.
++function takeSpansForChildren(spans, node, offset) {
++    let count = node.childCount;
++    if (!count || !spans.length)
+         return null;
+-    let end = offset + node.nodeSize, found = null;
++    let starts = new Array(count), ends = new Array(count), pos = offset, container = false;
++    for (let i = 0; i < count; i++) {
++        let child = node.child(i);
++        if (!child.isLeaf)
++            container = true;
++        starts[i] = pos;
++        pos += child.nodeSize;
++        ends[i] = pos;
++    }
++    if (!container)
++        return null;
++    let found = null;
+     for (let i = 0, span; i < spans.length; i++) {
+-        if ((span = spans[i]) && span.from > offset && span.to < end) {
+-            (found || (found = [])).push(span);
+-            spans[i] = null;
++        if (!(span = spans[i]))
++            continue;
++        let k;
++        if (span.from > span.to) {
++            for (k = 0; k < count; k++)
++                if (starts[k] < span.from && span.to < ends[k] && !node.child(k).isLeaf)
++                    break;
++            if (k == count)
++                continue;
+         }
++        else {
++            let lo = 0, hi = count;
++            while (lo < hi) {
++                let mid = (lo + hi) >> 1;
++                if (starts[mid] < span.from)
++                    lo = mid + 1;
++                else
++                    hi = mid;
++            }
++            k = lo - 1;
++            if (k < 0 || span.to >= ends[k] || node.child(k).isLeaf)
++                continue;
++        }
++        if (!found)
++            found = new Array(count);
++        if (found[k])
++            found[k].push(span);
++        else
++            found[k] = [span];
++        spans[i] = null;
+     }
+     return found;
+ }
+@@ -4574,8 +4781,10 @@ function withoutNulls(array) {
+ // for recursive calls).
+ function buildTree(spans, node, offset, options) {
+     let children = [], hasNulls = false;
+-    node.forEach((childNode, localStart) => {
+-        let found = takeSpansForNode(spans, childNode, localStart + offset);
++    // VMark patch (#1565): one pass over the spans, not one per child.
++    let taken = takeSpansForChildren(spans, node, offset);
++    if (taken) node.forEach((childNode, localStart, index) => {
++        let found = taken[index];
+         if (found) {
+             hasNulls = true;
+             let subtree = buildTree(found, childNode, offset + localStart + 1, options);

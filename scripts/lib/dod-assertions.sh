@@ -60,7 +60,9 @@ assert_grep_in_section() {
   if [[ ! -f "$file" ]]; then fail "$label (file missing: $file)"; return; fi
   body="$(awk -v h="$heading" '/^#+[[:space:]]/ { if (inside) exit; if ($0 ~ h) { inside = 1; next } } inside { print }' "$file")"
   if [[ -z "$body" ]]; then fail "$label (no section matching /$heading/ in $file)"; return; fi
-  if printf '%s\n' "$body" | grep -qE -- "$want"; then ok "$label"
+  # Here-string, not a pipe: under pipefail a `printf | grep -q` fails when
+  # grep exits on its first match and printf dies of SIGPIPE.
+  if grep -qE -- "$want" <<<"$body"; then ok "$label"
   else fail "$label (no /$want/ INSIDE the /$heading/ section of $file — it may be elsewhere on the page)"; fi
 }
 
@@ -253,6 +255,9 @@ assert_ts_code_grep() {
 # is relative to the directory of the file that carries it): `pty.rs` mounts
 # `pty/commands.test.rs` that way, and looking only beside the test reported
 # those tests as included by nothing.
+# A module one level down mounts a test beside its directory as
+# `#[path = "../<basename>"]`: `agent_journal/admission/mod.rs` mounts the
+# admission, request and page tests in `agent_journal/` that way.
 rust_mount_owner() {
   local file="$1" dir base cand up; dir="$(dirname "$file")"; base="$(basename "$file")"
   _DOD_MOUNT=""
@@ -264,6 +269,10 @@ rust_mount_owner() {
   if [[ -f "$dir.rs" ]] && grep -qF -- "\"$up\"" "$dir.rs" 2>/dev/null && rust_test_included "$dir.rs" "$up"; then
     _DOD_MOUNT="$dir.rs"; printf '%s\n' "$dir.rs"; return 0
   fi
+  while IFS= read -r cand; do
+    [[ -n "$cand" ]] || continue
+    if rust_test_included "$cand" "../$base"; then _DOD_MOUNT="$cand"; printf '%s\n' "$cand"; return 0; fi
+  done < <(grep -lF -- "\"../$base\"" "$dir"/*/*.rs 2>/dev/null)
   return 1
 }
 # Is `mod <stem>;` declared, in CODE, by a mod.rs/lib.rs/main.rs beside `$1`?

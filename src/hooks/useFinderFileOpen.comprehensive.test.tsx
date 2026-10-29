@@ -155,6 +155,7 @@ vi.mock("@/services/persistence/hotExit/hotExitCoordination", () => ({
 
 vi.mock("@/utils/debug", () => ({
   finderFileOpenWarn: vi.fn(),
+  largeFileWarn: vi.fn(),
   finderFileOpenError: vi.fn(),
 }));
 

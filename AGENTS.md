@@ -15,7 +15,7 @@ that enforces it; the pre-cleanup long form is `git show 12c98051e:AGENTS.md`.
 - **Research before building**: look for established patterns and prior art before inventing.
 - **Edge cases are not optional**: empty/null input, max values, concurrency, Unicode/CJK, RTL, rapid repeats, network failure, permission denial — test each.
 - **Test-first is mandatory** for new behavior (RED → GREEN → REFACTOR). Coverage floors are enforced. Exempt: CSS-only, docs, config. See `.claude/rules/10-tdd.md`.
-- `dev-docs/` and `.vmark/` are maintainer-local (gitignored); skip references to them when absent. Archive finished deep research to `dev-docs/deep-researches/YYYYMMDD-topic.md` and link it from `dev-docs/README.md`.
+- `dev-docs/` and `.vmark/` are maintainer-local (gitignored); skip references to them when absent. When present, update the dev doc a behavior change affects in the same change. Archive finished deep research to `dev-docs/deep-researches/YYYYMMDD-topic.md` and link it from `dev-docs/README.md`.
 - Never bypass a hook or gate (`--no-verify`, removing hooks, loosening a gate) without explicit authorization. Fix the gate instead.
 
 ## Gates — what to run
@@ -71,6 +71,7 @@ Each script's header explains its rules and exemption markers.
 - `lint:file-headers`, `lint:provenance-ids` — every production `.ts`/`.tsx` under `src/` opens with its `/** … @module */` header; production comments carry no calendar date, no `dev-docs/` document path, and only WI/audit ids a tracked file resolves. See `.claude/rules/22-comment-maintenance.md`.
 - `lint:rust-deps` (`cargo machete`) runs in CI, not `check:all`.
 - Markdown parser hostile-input cost is linear: fast paths in `parser/fastPaths/`, `pnpm` patches in `patches/` (a Dependabot bump of micromark or mdast-util-to-markdown fails install until the patch is re-made — that is intended), and `pathologicalScaling.test.ts`.
+- Decoration-set cost is linear through `patches/prosemirror-view@1.42.6.patch` (#1565). A `prosemirror-view` bump fails install until the patch is re-made; `src/plugins/shared/__tests__/decorationSet.*` hold it to the unpatched algorithm and pin the version.
 
 ## i18n
 

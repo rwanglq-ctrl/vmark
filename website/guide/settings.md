@@ -35,6 +35,12 @@ On Windows and Linux the system draws the title bar (and, on Windows, the menu b
 
 When enabled, the single theme row is replaced by two rows — **Light theme** (used while the system is in light mode, default Paper) and **Dark theme** (used in dark mode, default Night). VMark switches between them the moment the system appearance changes; your manual theme choice is kept and restored when you turn the option off.
 
+### Sidebar
+
+| Setting | Description | Default | Options |
+|---------|-------------|---------|---------|
+| Sidebar style | How the sidebar and workspace rail are framed. **Full height** runs them along the window's edge with a thin divider, as macOS's own sidebars do; **Card** floats them inside the window with rounded corners and a shadow. Applies to the Settings window too | Full height | Full height, Card |
+
 ### Window
 
 | Setting | Description | Default |
@@ -139,7 +145,7 @@ Two spaces is the most compatible hard break style — it works on GitHub, GitLa
 
 | Setting | Description | Default | Options |
 |---------|-------------|---------|---------|
-| Auto Source mode | Open files over 1 MB in Source mode (skips WYSIWYG to keep performance smooth). You can switch to WYSIWYG from the status bar at any time | On | On / Off |
+| Auto Source mode | Open large files in Source mode — files over 1 MB, or markdown with 1,200+ estimated blocks (skips WYSIWYG to keep performance smooth). You can switch to WYSIWYG from the status bar at any time | On | On / Off |
 | Warn above size | Show a confirmation prompt before opening files over 5 MB. Files of 50 MB or more are always refused | On | On / Off |
 
 See [Large Files](/guide/large-files) for the full breakdown of how large files are handled.
@@ -445,7 +451,7 @@ Configure the integrated terminal panel. Open the terminal with `` Ctrl + ` ``.
 | Cursor Blink | Whether the terminal cursor blinks | On | On / Off |
 | Copy on Select | Automatically copy selected terminal text to the clipboard | Off | On / Off |
 | Automatic transcript rendering | Render Claude/Codex Markdown, tables and Mermaid diagrams beside the terminal CLI. Adds a local SessionStart hook to the Claude Code and Codex configuration; restart running CLI sessions after enabling | Off | On / Off |
-| WebGL Renderer | Use GPU-accelerated rendering for the terminal. Disable if you experience IME input issues. Requires a terminal restart | On | On / Off |
+| WebGL Renderer | Use GPU-accelerated rendering for the terminal. Disable if you experience IME input issues. Requires a terminal restart. macOS and Windows only — Linux always uses the DOM renderer | On | On / Off |
 | Remote Clipboard (OSC 52) | Let programs running in the terminal — over ssh, inside tmux — copy to your system clipboard. The channel is write-only: reading the clipboard is always refused, since any output printed to the terminal could request it | On | On / Off |
 | Scrollback | Number of lines of output each session keeps in its scroll history. Higher values use more memory | 5,000 | 1,000 / 5,000 / 10,000 / 50,000 |
 | Screen Reader Mode | Expose terminal output to assistive technology (VoiceOver). Off by default for performance | Off | On / Off |

@@ -23,6 +23,8 @@
  * @coordinates-with markdownPipeline/ — schema nodes must match pipeline converters
  * @coordinates-with editorPlugins.tiptap.ts — additional ProseMirror plugins
  * @coordinates-with hostAdapters.ts — the app-side values plugins are configured with
+ * @coordinates-with cjkLetterSpacingSetting.ts — the CJK spacing predicate, shared with export
+ * @coordinates-with services/agentJournal/collectors/wysiwyg/wysiwygCollector.ts — the journal's observer, per tab
  * @module services/assembly/tiptapExtensions
  */
 
@@ -109,6 +111,7 @@ import {
 } from "@/plugins/markdownArtifacts";
 import { wikiLinkPopupExtension } from "@/plugins/wikiLinkPopup";
 import { CJKLetterSpacing } from "@/plugins/cjkLetterSpacing";
+import { isCjkLetterSpacingOn } from "./cjkLetterSpacingSetting";
 import { sourcePeekInlineExtension } from "@/plugins/sourcePeekInline";
 import { smartSelectAllExtension } from "@/plugins/smartSelectAll/tiptap";
 import { inlineCodeBoundaryExtension } from "@/plugins/inlineCodeBoundary/tiptap";
@@ -116,6 +119,7 @@ import { CJKBold, CJKItalic } from "@/plugins/markInputRules/tiptap";
 import { textDragDropExtension } from "@/plugins/textDragDrop/tiptap";
 import { tocExtension } from "@/plugins/tableOfContents/tiptap";
 import { LintExtension } from "@/plugins/lint/tiptap";
+import { wysiwygProvenanceExtension } from "@/services/agentJournal/collectors/wysiwyg/wysiwygCollector";
 import { inactiveSelectionExtension } from "@/plugins/inactiveSelection/tiptap";
 import { blockMediaExtensions } from "./blockMediaExtensions";
 
@@ -239,7 +243,7 @@ export function buildExtensionList(config: TiptapExtensionConfig = {}): Extensio
     }),
     multiCursorExtension,
     aiSuggestionExtension.configure({ store: pluginStores.aiSuggestion }),
-    CJKLetterSpacing,
+    CJKLetterSpacing.configure({ isEnabled: isCjkLetterSpacingOn }),
     sourcePeekInlineExtension,
     smartSelectAllExtension,
     inlineCodeBoundaryExtension,
@@ -252,5 +256,7 @@ export function buildExtensionList(config: TiptapExtensionConfig = {}): Extensio
     // markdown.lintEnabled setting, so toggling lint takes effect without an
     // editor remount (mount-time gating left WYSIWYG stale until remount).
     ...(tabId ? [LintExtension.configure({ tabId, diagnostics: lintDiagnosticsSource })] : []),
+    // The agent edit journal's observer: certifies this editor's flushes.
+    ...(tabId ? [wysiwygProvenanceExtension(tabId)] : []),
   ];
 }

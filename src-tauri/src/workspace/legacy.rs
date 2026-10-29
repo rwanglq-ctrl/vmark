@@ -1,14 +1,18 @@
 //! # Workspace config — legacy layouts
 //!
-//! Purpose: everything that reads or retires an OLD on-disk form of a
-//! workspace config: the 8-byte hash filename used by releases <= 0.7.22, the
+//! Purpose: everything that reads an OLD on-disk form of a workspace config:
+//! the 8-byte hash filename used by releases <= 0.7.22, the
 //! `.vmark/vmark.code-workspace` directory format and the ancient plain
 //! `.vmark` file. Split out of `workspace/mod.rs` so the commands there stay small.
 //!
-//! Sunset: the `.vmark` half (`clean_excludes`, `migrate_from_legacy`,
-//! `cleanup_old_vmark`) goes once no supported upgrade path starts below
-//! 0.4.18 (the last release that wrote that layout was 0.4.17); the hash half
-//! once none starts below 0.7.23.
+//! Migration is read-only with respect to the repository. The `.vmark` layout
+//! belongs to the user and may be tracked in git, so opening a workspace must
+//! never delete or rewrite it; the migrated copy lives in app data and the
+//! legacy tree is left exactly as it was found.
+//!
+//! Sunset: the `.vmark` half (`migrate_from_legacy`) goes once no supported
+//! upgrade path starts below 0.4.18 (the last release that wrote that layout
+//! was 0.4.17); the hash half once none starts below 0.7.23.
 //!
 //! @coordinates-with mod.rs — `read_workspace_config` migrates through these
 //! @module workspace/legacy
@@ -124,11 +128,6 @@ struct AncientLegacyConfig {
 // Legacy migration
 // ============================================================================
 
-/// Strip `.vmark` from a legacy exclude list — the directory no longer exists.
-pub(super) fn clean_excludes(folders: Vec<String>) -> Vec<String> {
-    folders.into_iter().filter(|f| f != ".vmark").collect()
-}
-
 /// Try to read config from legacy `.vmark/` directory or ancient `.vmark` file.
 /// Returns `Ok(Some(config))` if found, `Ok(None)` if no legacy exists. Both branches
 /// spread `WorkspaceConfig::default()` and name only the fields the legacy format
@@ -147,7 +146,9 @@ pub(super) fn migrate_from_legacy(root_path: &str) -> Result<Option<WorkspaceCon
                 .map_err(|e| format!("Failed to parse legacy workspace file: {e}"))?;
 
             return Ok(Some(WorkspaceConfig {
-                exclude_folders: clean_excludes(ws.settings.exclude_folders),
+                // The legacy tree stays on disk, so its `.vmark` exclusion stays
+                // meaningful and is carried over unchanged.
+                exclude_folders: ws.settings.exclude_folders,
                 show_hidden_files: ws.settings.show_hidden_files,
                 last_open_tabs: ws.settings.last_open_tabs,
                 ai: ws.settings.ai,
@@ -168,7 +169,7 @@ pub(super) fn migrate_from_legacy(root_path: &str) -> Result<Option<WorkspaceCon
             // A file predating the `version` key deserializes to 0 — a schema version
             // we never emitted. Clamp to the v1 it is, rather than persisting 0.
             version: ancient.version.max(1),
-            exclude_folders: clean_excludes(ancient.exclude_folders),
+            exclude_folders: ancient.exclude_folders,
             last_open_tabs: ancient.last_open_tabs,
             ai: ancient.ai,
             ..WorkspaceConfig::default()
@@ -176,20 +177,4 @@ pub(super) fn migrate_from_legacy(root_path: &str) -> Result<Option<WorkspaceCon
     }
 
     Ok(None)
-}
-
-/// Best-effort cleanup of legacy `.vmark/` in a workspace root.
-/// Removes workspace file, then tries to remove the directory (only if empty).
-pub(super) fn cleanup_old_vmark(root_path: &str) {
-    let root = Path::new(root_path);
-    let dot_vmark = root.join(".vmark");
-
-    if dot_vmark.is_dir() {
-        // Remove known file
-        let _ = fs::remove_file(dot_vmark.join("vmark.code-workspace"));
-        // Try rmdir (fails if not empty — that's fine)
-        let _ = fs::remove_dir(&dot_vmark);
-    } else if dot_vmark.is_file() {
-        let _ = fs::remove_file(&dot_vmark);
-    }
 }

@@ -35,11 +35,14 @@ import {
   getEditorScrollOffset,
   setEditorScrollOffset,
 } from "@/services/editor/scrollPosition";
+import { chooseEditorRestore } from "@/services/editor/restoreChoice";
 import {
   bumpLintDocEpoch,
   markLintRunStart,
   isLintRunCurrent,
 } from "@/plugins/lint/docEpoch";
+import { journalBasis, rememberJournalBasis, windowNameFor } from "@/services/agentJournal/documentIdentity";
+import { agentJournalEpochFake } from "@/test/agentJournalEpochFake";
 
 describe("cleanupTabState", () => {
   beforeEach(() => {
@@ -79,6 +82,28 @@ describe("cleanupTabState", () => {
     expect(getEditorScrollOffset("tab-456", "wysiwyg")).toBe(400);
   });
 
+  it("forgets which surface showed the tabId, so a reused id starts fresh (#1556)", () => {
+    chooseEditorRestore("tab-123", "wysiwyg", true);
+    cleanupTabState("tab-123");
+    setEditorScrollOffset("tab-123", "wysiwyg", 400);
+
+    // A first show again: the cursor, not an offset left by the closed tab.
+    expect(chooseEditorRestore("tab-123", "wysiwyg", true)).toBe("cursor");
+    cleanupTabState("tab-123");
+  });
+
+  it("releases the tab's agent-journal state and window names (and only that tab's)", () => {
+    rememberJournalBasis("tab-123", "path:/a.md", "rev-1");
+    const name = windowNameFor("tab-123", "path:/a.md", "main");
+    rememberJournalBasis("tab-456", "path:/a.md", "rev-2");
+
+    cleanupTabState("tab-123");
+
+    expect(journalBasis("tab-123", "path:/a.md")).toBeNull();
+    expect(agentJournalEpochFake.released).toContain(name);
+    expect(journalBasis("tab-456", "path:/a.md")).toBe("rev-2");
+  });
+
   it("forgets the lint doc-epoch counters for the tabId", () => {
     markLintRunStart("tab-123");
     bumpLintDocEpoch("tab-123");
@@ -89,5 +114,39 @@ describe("cleanupTabState", () => {
 
     expect(isLintRunCurrent("tab-123")).toBe(true);
     expect(isLintRunCurrent("tab-456")).toBe(false);
+  });
+
+  it("a cleanup step that throws does not stop the rest, the journal release included, and is still reported", () => {
+    rememberJournalBasis("tab-789", "path:/b.md", "rev-3");
+    const name = windowNameFor("tab-789", "path:/b.md", "main");
+    const failure = new Error("history store unavailable");
+    mockClearDocument.mockImplementationOnce(() => {
+      throw failure;
+    });
+
+    expect(() => cleanupTabState("tab-789")).toThrow(failure);
+
+    expect(mockClearDiagnostics).toHaveBeenCalledWith("tab-789");
+    expect(mockClearForTab).toHaveBeenCalledWith("tab-789");
+    expect(journalBasis("tab-789", "path:/b.md")).toBeNull();
+    expect(agentJournalEpochFake.released).toContain(name);
+  });
+
+  it("two failing steps are both reported", () => {
+    mockRemoveDocument.mockImplementationOnce(() => {
+      throw new Error("first");
+    });
+    mockClearForTab.mockImplementationOnce(() => {
+      throw new Error("second");
+    });
+
+    let thrown: unknown;
+    try {
+      cleanupTabState("tab-790");
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(AggregateError);
+    expect((thrown as AggregateError).errors.map((e: Error) => e.message)).toEqual(["first", "second"]);
   });
 });

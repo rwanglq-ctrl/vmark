@@ -35,6 +35,12 @@ Unter Windows und Linux zeichnet das System die Titelleiste (und unter Windows a
 
 Ist die Option aktiviert, wird die einzelne Design-Zeile durch zwei Zeilen ersetzt — **Helles Design** (verwendet, solange das System im hellen Modus ist, Standard Papier) und **Dunkles Design** (verwendet im dunklen Modus, Standard Nacht). VMark wechselt in dem Moment zwischen ihnen, in dem sich die Systemdarstellung ändert; Ihre manuelle Designauswahl bleibt erhalten und wird wiederhergestellt, wenn Sie die Option ausschalten.
 
+### Seitenleiste
+
+| Einstellung | Beschreibung | Standard | Optionen |
+|-------------|-------------|---------|---------|
+| Stil der Seitenleiste | Wie Seitenleiste und Arbeitsbereichsleiste gerahmt werden. **Volle Höhe** führt sie mit einer feinen Trennlinie am Fensterrand entlang, wie die Seitenleisten von macOS selbst; **Karte** lässt sie mit abgerundeten Ecken und Schatten im Fenster schweben. Gilt auch für das Einstellungsfenster | Volle Höhe | Volle Höhe, Karte |
+
 ### Fenster
 
 | Einstellung | Beschreibung | Standard |
@@ -142,7 +148,7 @@ Zwei Leerzeichen ist der kompatabelste Stil für harte Zeilenumbrüche — er fu
 
 | Einstellung | Beschreibung | Standard | Optionen |
 |-------------|-------------|---------|---------|
-| Auto-Quellmodus | Dateien über 1 MB im Quellmodus öffnen (überspringt WYSIWYG für flüssige Performance). Über die Statusleiste können Sie jederzeit zu WYSIWYG wechseln | Ein | Ein / Aus |
+| Auto-Quellmodus | Große Dateien im Quellmodus öffnen — Dateien über 1 MB oder Markdown mit 1.200+ geschätzten Blöcken (überspringt WYSIWYG für flüssige Performance). Über die Statusleiste können Sie jederzeit zu WYSIWYG wechseln | Ein | Ein / Aus |
 | Warnen ab Größe | Vor dem Öffnen von Dateien über 5 MB einen Bestätigungsdialog anzeigen. Dateien ab 50 MB werden immer abgelehnt | Ein | Ein / Aus |
 
 Siehe [Große Dateien](/de/guide/large-files) für die vollständige Aufschlüsselung des Umgangs mit großen Dateien.
@@ -448,7 +454,7 @@ Konfigurieren Sie das integrierte Terminal-Panel. Öffnen Sie das Terminal mit `
 | Cursor blinken | Ob der Terminal-Cursor blinkt | Ein | Ein / Aus |
 | Bei Auswahl kopieren | Ausgewählten Terminaltext automatisch in die Zwischenablage kopieren | Aus | Ein / Aus |
 | Gesprächsprotokolle automatisch darstellen | Claude/Codex-Markdown, Tabellen und Mermaid-Diagramme neben der Terminal-CLI darstellen. Fügt der Konfiguration von Claude Code und Codex einen lokalen SessionStart-Hook hinzu; laufende CLI-Sitzungen nach dem Aktivieren neu starten | Aus | Ein / Aus |
-| WebGL-Renderer | GPU-beschleunigtes Rendering für das Terminal verwenden. Deaktivieren bei IME-Eingabeproblemen. Erfordert Terminal-Neustart | Ein | Ein / Aus |
+| WebGL-Renderer | GPU-beschleunigtes Rendering für das Terminal verwenden. Deaktivieren bei IME-Eingabeproblemen. Erfordert Terminal-Neustart. Nur macOS und Windows — Linux verwendet immer den DOM-Renderer | Ein | Ein / Aus |
 | Zwischenablage aus der Ferne (OSC 52) | Programmen im Terminal — über ssh, in tmux — erlauben, in Ihre Systemzwischenablage zu kopieren. Der Kanal ist nur schreibend: Das Lesen der Zwischenablage wird immer verweigert, da jede im Terminal ausgegebene Ausgabe es anfordern könnte | Ein | Ein / Aus |
 | Scrollback-Puffer | Anzahl der Ausgabezeilen, die jede Sitzung in ihrem Scrollverlauf behält. Höhere Werte benötigen mehr Speicher | 5.000 | 1.000 / 5.000 / 10.000 / 50.000 |
 | Screenreader-Modus | Terminalausgabe für assistive Technologien (VoiceOver) zugänglich machen. Aus Leistungsgründen standardmäßig deaktiviert | Aus | Ein / Aus |

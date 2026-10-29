@@ -60,18 +60,32 @@ fn a_legacy_workspace_is_migrated_once_and_then_read_from_app_data() {
     .unwrap();
     let paths = paths_in(app_data.path(), root);
 
+    let legacy_file = root_dir.path().join(".vmark/vmark.code-workspace");
+    let legacy_text = std::fs::read_to_string(&legacy_file).unwrap();
+
     let first = read_config_in(&paths, root).unwrap().expect("migrated");
-    assert_eq!(first.exclude_folders, vec!["dist".to_string()]);
+    // `.vmark` stays in the excluded folders: the directory is still there, and
+    // stripping it would expose a tree the user had chosen to hide.
+    assert_eq!(
+        first.exclude_folders,
+        vec!["dist".to_string(), ".vmark".to_string()]
+    );
     assert!(first.show_hidden_files);
     assert!(paths.ws_path.exists(), "the migrated config is persisted");
-    assert!(
-        !root_dir.path().join(".vmark").exists(),
-        "the legacy directory is retired once the new file is written"
+    assert_eq!(
+        std::fs::read_to_string(&legacy_file).unwrap(),
+        legacy_text,
+        "migration must leave the repository's legacy file byte-for-byte intact"
     );
 
     // What a second window opening the same workspace reads.
     let second = read_config_in(&paths, root).unwrap().expect("still there");
     assert_eq!(json(&second), json(&first));
+    assert_eq!(
+        std::fs::read_to_string(&legacy_file).unwrap(),
+        legacy_text,
+        "a second read must not retire the legacy file either"
+    );
 }
 
 // `tauri::test::MockRuntime` does not exist on Windows (Cargo.toml scopes the

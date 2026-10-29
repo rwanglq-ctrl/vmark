@@ -35,6 +35,12 @@ En Windows y Linux el sistema dibuja la barra de título (y, en Windows, la barr
 
 Cuando está activado, la fila única de tema se sustituye por dos filas — **Tema claro** (usado mientras el sistema está en modo claro, Paper por defecto) y **Tema oscuro** (usado en modo oscuro, Night por defecto). VMark cambia entre ellos en cuanto cambia la apariencia del sistema; tu elección manual de tema se conserva y se restaura al desactivar la opción.
 
+### Barra lateral
+
+| Configuración | Descripción | Predeterminado | Opciones |
+|---------------|-------------|----------------|---------|
+| Estilo de la barra lateral | Cómo se enmarcan la barra lateral y el riel de espacios de trabajo. **Altura completa** los coloca junto al borde de la ventana con una fina línea divisoria, como las barras laterales de macOS; **Tarjeta** los hace flotar dentro de la ventana con esquinas redondeadas y sombra. También se aplica a la ventana de Ajustes | Altura completa | Altura completa, Tarjeta |
+
 ### Ventana
 
 | Configuración | Descripción | Predeterminado |
@@ -142,7 +148,7 @@ Dos espacios es el estilo de salto de línea forzado más compatible — funcion
 
 | Configuración | Descripción | Predeterminado | Opciones |
 |---------------|-------------|----------------|---------|
-| Modo Fuente automático | Abre los archivos de más de 1 MB en modo Fuente (omite WYSIWYG para mantener un rendimiento fluido). Puedes cambiar a WYSIWYG desde la barra de estado en cualquier momento | Activado | Activado / Desactivado |
+| Modo Fuente automático | Abre los archivos grandes en modo Fuente — archivos de más de 1 MB o markdown con 1.200+ bloques estimados (omite WYSIWYG para mantener un rendimiento fluido). Puedes cambiar a WYSIWYG desde la barra de estado en cualquier momento | Activado | Activado / Desactivado |
 | Avisar por encima del tamaño | Mostrar un aviso de confirmación antes de abrir archivos de más de 5 MB. Los archivos de 50 MB o más siempre se rechazan | Activado | Activado / Desactivado |
 
 Consulta [Archivos Grandes](/es/guide/large-files) para el desglose completo de cómo se manejan los archivos grandes.
@@ -448,7 +454,7 @@ Configura el panel del terminal integrado. Abre el terminal con `` Ctrl + ` ``.
 | Cursor Parpadeante | Si el cursor del terminal parpadea | Activado | Activado / Desactivado |
 | Copiar al Seleccionar | Copia automáticamente el texto del terminal seleccionado al portapapeles | Desactivado | Activado / Desactivado |
 | Mostrar transcripciones automáticamente | Muestra Markdown, tablas y diagramas Mermaid de Claude/Codex junto a la CLI del terminal. Añade un hook SessionStart local a la configuración de Claude Code y Codex; reinicia las sesiones CLI activas después de habilitarlo | Desactivado | Activado / Desactivado |
-| Renderizador WebGL | Usa renderizado acelerado por GPU para el terminal. Desactívalo si experimentas problemas de entrada IME. Requiere reiniciar el terminal | Activado | Activado / Desactivado |
+| Renderizador WebGL | Usa renderizado acelerado por GPU para el terminal. Desactívalo si experimentas problemas de entrada IME. Requiere reiniciar el terminal. Solo macOS y Windows — Linux usa siempre el renderizador DOM | Activado | Activado / Desactivado |
 | Portapapeles remoto (OSC 52) | Permite que los programas que se ejecutan en el terminal — por ssh, dentro de tmux — copien al portapapeles del sistema. El canal es solo de escritura: la lectura del portapapeles siempre se rechaza, ya que cualquier salida impresa en el terminal podría solicitarla | Activado | Activado / Desactivado |
 | Historial de desplazamiento | Número de líneas de salida que cada sesión conserva en su historial de desplazamiento. Los valores más altos usan más memoria | 5.000 | 1.000 / 5.000 / 10.000 / 50.000 |
 | Modo lector de pantalla | Expone la salida del terminal a las tecnologías de asistencia (VoiceOver). Desactivado por defecto por rendimiento | Desactivado | Activado / Desactivado |

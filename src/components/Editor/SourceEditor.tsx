@@ -9,8 +9,8 @@
  *     content changes are patched in via dispatch to preserve undo history.
  *   - `isInternalChange` ref prevents echo loops: edits from CodeMirror → store → back
  *     to CodeMirror are suppressed.
- *   - Hidden mode (`hidden` prop) skips store updates to prevent stale writes when
- *     keepAlive mode keeps both editors mounted.
+ *   - Hidden mode (`hidden` prop) skips store updates (and provenance reports) to prevent
+ *     stale writes when keepAlive mode keeps both editors mounted.
  *   - Parent scroll reset on mount fixes a displacement bug where .editor-content retains
  *     scrollTop from WYSIWYG mode.
  *   - Scroll offset is remembered per tab, so a remount with no cursor to restore
@@ -21,6 +21,7 @@
  * @coordinates-with sourceCursorTracker.ts — per-frame cursor snapshot and selected text
  * @coordinates-with services/search/sourceSearchCounter.ts — recounts find matches after edits
  * @coordinates-with stores/editorStore.ts — registers as the active source view
+ * @coordinates-with services/agentJournal/collectors/sourceCollector.ts — reports edits ahead of the store write
  * @module components/Editor/SourceEditor
  */
 import { useEffect, useRef } from "react";
@@ -29,9 +30,9 @@ import { EditorView, keymap } from "@codemirror/view";
 import { useUIStore } from "@/stores/uiStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShortcutsStore } from "@/stores/settingsStore";
-import { useTabStore } from "@/stores/tabStore";
 import { useWindowLabel } from "@/contexts/WindowContext";
 import { useSourcePaneFocus } from "@/hooks/useSourcePaneFocus";
+import { useIsFocusedPane } from "@/hooks/useIsFocusedPane";
 import {
   useActiveTabId, useDocumentContent,
   useDocumentCursorInfo,
@@ -53,8 +54,9 @@ import {
   shortcutKeymapCompartment,
   readOnlyCompartment,
 } from "@/services/assembly/sourceEditorExtensions";
-import { focusAndRestoreSource } from "./sourceFocusRestore";
+import { focusAndRestoreSource, scheduleSourceFocusRestore } from "./sourceFocusRestore";
 import { createSourceCursorTracker, sourceCursorExtension, type SourceCursorTracker } from "./sourceCursorTracker";
+import { createSourceProvenance } from "@/services/agentJournal/collectors/sourceCollector";
 
 interface SourceEditorProps {
   hidden?: boolean;
@@ -69,12 +71,11 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
   const hiddenRef = useRef(hidden);
   const cursorTrackerRef = useRef<SourceCursorTracker | null>(null);
 
-  useSourceOutlineSync(viewRef, hidden);
-
   // Use document store for content (per-window state)
   const content = useDocumentContent();
   const cursorInfo = useDocumentCursorInfo();
-  const { setContent, setCursorInfo, setSelectedText } = useDocumentActions(useActiveTabId() ?? undefined);
+  const tabId = useActiveTabId() ?? undefined; // THIS pane's tab — the window's active tab is the other pane's in a split (#1554)
+  const { setContent, setCursorInfo, setSelectedText } = useDocumentActions(tabId);
 
   // Refs to capture callbacks for use in CodeMirror listener
   const setContentRef = useRef(setContent);
@@ -90,7 +91,6 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
   cursorInfoRef.current = cursorInfo;
   /* eslint-enable react-hooks/refs */
 
-  // Use editor store for global settings
   const wordWrap = useUIStore((state) => state.wordWrap);
   const showLineNumbers = useUIStore((state) => state.showLineNumbers);
   const showBrTags = useSettingsStore((state) => state.markdown.showBrTags);
@@ -100,6 +100,8 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
   // Window label for tab ID resolution (stable per window)
   const windowLabel = useWindowLabel();
   const isFocusedPaneRef = useSourcePaneFocus(viewRef, windowLabel, hidden); // #1081
+  const isFocusedPane = useIsFocusedPane(windowLabel);
+  useSourceOutlineSync(viewRef, hidden || !isFocusedPane); // outline clicks address the focused pane only (#1554)
 
   // Handle image drag-drop from Finder/Explorer
   useImageDragDrop({
@@ -162,10 +164,9 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
     const initialShowInvisibles = useSettingsStore.getState().markdown.showInvisibles;
     const initialAutoPair = useSettingsStore.getState().markdown.autoPairEnabled ?? true;
     const initialLintEnabled = useSettingsStore.getState().markdown.lintEnabled ?? true;
-    // Capture tabId at mount time — SourceEditor remounts per tab so this is stable
-    const { activeTabId: currentTabId } = useTabStore.getState();
-    /* v8 ignore next -- @preserve reason: runtime window label lookup; windowLabel always resolves in tests */
-    const mountTabId = currentTabId[windowLabel] ?? undefined;
+    const mountTabId = tabId; // this pane's tab at mount time — SourceEditor remounts per tab, so it is stable
+    // Reports each edit to the tab's provenance session before the store write; takes its start token now.
+    const provenance = createSourceProvenance(mountTabId, () => !hiddenRef.current);
     // Capture file path for language mode detection (YAML vs markdown)
     /* v8 ignore next 2 -- @preserve reason: documentStore access at mount time; filePath is always available */
     const mountFilePath = mountTabId
@@ -181,19 +182,16 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
         initialShowLineNumbers,
         initialShowInvisibles,
         initialReadOnly: readOnly,
-        updateListener: [updateListener, sourceCursorExtension, sourceSearchPlace],
+        updateListener: [provenance.extension, updateListener, sourceCursorExtension, sourceSearchPlace],
         tabId: mountTabId,
         lintEnabled: initialLintEnabled,
         filePath: mountFilePath,
       }),
     });
 
-    const view = new EditorView({
-      state,
-      parent: containerRef.current,
-    });
-
+    const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
+    provenance.start(view);
 
     // Register only when visible + focused pane (#1081).
     if (!hiddenRef.current && isFocusedPaneRef.current) useEditorStore.getState().setActiveSourceView(view, mountTabId);
@@ -219,22 +217,20 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
 
     // Auto-focus and restore cursor/scroll on mount (only when visible)
     const initialCursorInfo = cursorInfo;
-    let focusTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    if (!hiddenRef.current) {
-      focusTimeoutId = setTimeout(() => {
-        /* v8 ignore next -- @preserve defensive guard: view is cleared by cleanup before timeout fires */
-        if (!viewRef.current) return; // Defensive — cleanup clears this timeout
-        focusAndRestoreSource(view, mountTabId, initialCursorInfo);
-      }, 50);
-    }
+    const cancelFocusRestore = hiddenRef.current ? null : scheduleSourceFocusRestore(view, () => {
+      /* v8 ignore next -- @preserve defensive guard: view is cleared by cleanup before timeout fires */
+      if (!viewRef.current) return; // Defensive — cleanup cancels this restore
+      focusAndRestoreSource(view, mountTabId, initialCursorInfo, isFocusedPaneRef.current); // only the focused pane takes focus (#1554)
+    });
 
     return () => {
-      if (focusTimeoutId !== null) clearTimeout(focusTimeoutId);
+      cancelFocusRestore?.();
       searchRecount.cancel();
       unsubscribeShortcuts();
       stopScrollMemory();
       useEditorStore.getState().clearSourceViewIfMatch(view);
       cursorTracker.flush(); // a snapshot still waiting for its frame is published, not lost
+      provenance.stop();
       view.destroy();
       viewRef.current = null;
     };
@@ -263,15 +259,13 @@ export function SourceEditor({ hidden = false, readOnly = false }: SourceEditorP
     }
 
     // Register as active source view (focused pane only, #1081).
-    const { activeTabId: tabIds } = useTabStore.getState();
-    const visibleTabId = tabIds[windowLabel] ?? undefined;
-    if (isFocusedPaneRef.current) useEditorStore.getState().setActiveSourceView(view, visibleTabId);
+    if (isFocusedPaneRef.current) useEditorStore.getState().setActiveSourceView(view, tabId);
 
     // Focus and restore cursor/scroll
-    setTimeout(() => {
+    scheduleSourceFocusRestore(view, () => {
       if (!viewRef.current || hiddenRef.current) return;
-      focusAndRestoreSource(view, visibleTabId, cursorInfoRef.current);
-    }, 50);
+      focusAndRestoreSource(view, tabId, cursorInfoRef.current, isFocusedPaneRef.current);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the visibility transition only; it reads the current render's values when it runs
   }, [hidden]);
 

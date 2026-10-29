@@ -11,11 +11,14 @@
  *   - Right-click and click ask the HOST to open chrome, through `hostPopups`,
  *     rather than reaching the app's popup stores (ADR-015)
  *   - `decoding = "async"`, as block images: decode off the main thread
+ *   - The `src` is resolved and assigned only near the viewport, as block
+ *     images (#1565)
  *
  * @coordinates-with imageView/resolveSrc.ts — src → asset URL, and its tests
  * @coordinates-with plugins/shared/hostPopups.ts — the chrome seam
  * @coordinates-with shared/mediaSecurity.ts — URL classification
  * @coordinates-with tiptap.ts — registers this NodeView for the image node type
+ * @coordinates-with shared/loadImageNearViewport.ts — when the fetch starts
  * @coordinates-with blockImage/BlockImageNodeView.ts — similar logic for block-level images
  * @module plugins/imageView/plugin
  */
@@ -26,8 +29,9 @@ import { NodeSelection } from "@tiptap/pm/state";
 import type { NodeView } from "@tiptap/pm/view";
 import { hostPopups } from "@/plugins/shared/hostPopups";
 import { isExternalUrl } from "../shared/mediaSecurity";
+import { loadImageNearViewport } from "../shared/loadImageNearViewport";
 import { imageViewWarn } from "@/utils/debug";
-import { resolveImageSrc } from "./resolveSrc";
+import { resolveImageSrc, snapshotActiveFilePath } from "./resolveSrc";
 
 /**
  * Custom NodeView for image nodes.
@@ -40,13 +44,22 @@ export class ImageNodeView implements NodeView {
   private editor: Editor;
   private resolveRequestId = 0; // Track async requests to ignore stale responses
   private destroyed = false;
+  /** The editor view's DOM; its scroll container decides when the image loads. */
+  private editorDom: Element | null;
+  private cancelLoad: (() => void) | null = null;
   // Store active load handlers for cleanup
   private activeLoadHandler: (() => void) | null = null;
   private activeErrorHandler: (() => void) | null = null;
 
-  constructor(node: Node, getPos: () => number | undefined, editor: Editor) {
+  constructor(
+    node: Node,
+    getPos: () => number | undefined,
+    editor: Editor,
+    editorDom: Element | null = null,
+  ) {
     this.getPos = getPos;
     this.editor = editor;
+    this.editorDom = editorDom;
     this.originalSrc = node.attrs.src ?? "";
 
     // Create img element directly as dom (no wrapper)
@@ -115,6 +128,13 @@ export class ImageNodeView implements NodeView {
   };
 
   private updateSrc(src: string): void {
+    // Bump on EVERY call, before the early returns: a local path still
+    // resolving must not override a newer external or empty source.
+    const requestId = ++this.resolveRequestId;
+    this.cancelLoad?.();
+    this.cancelLoad = null;
+    // The replaced image's late load/error must not judge the new source.
+    this.cleanupLoadHandlers();
     // Reset states
     this.dom.style.opacity = "1";
     this.dom.classList.remove("image-loading", "image-error");
@@ -128,8 +148,7 @@ export class ImageNodeView implements NodeView {
     // External URLs can be used directly
     if (isExternalUrl(src)) {
       this.dom.classList.add("image-loading");
-      this.dom.src = src;
-      this.setupLoadHandlers();
+      this.loadWhenNear(src);
       return;
     }
 
@@ -138,26 +157,37 @@ export class ImageNodeView implements NodeView {
     this.dom.src = "";
     this.dom.classList.add("image-loading");
 
-    // Increment request ID to track this specific request
-    const requestId = ++this.resolveRequestId;
+    // Whose document this is, read now: by the time the image nears the
+    // viewport, focus may be in the other pane of a split.
+    const documentPath = snapshotActiveFilePath();
+    this.cancelLoad = loadImageNearViewport(this.dom, this.editorDom, () =>
+      resolveImageSrc(src, documentPath).then((resolvedSrc) => {
+        // Ignore stale responses (src changed or view destroyed)
+        if (this.destroyed || requestId !== this.resolveRequestId) {
+          return;
+        }
+        if (!resolvedSrc) {
+          this.showError("Failed to resolve path");
+          return;
+        }
+        this.assignSrc(resolvedSrc);
+      }).catch((error: unknown) => {
+        imageViewWarn("resolveImageSrc failed:", error);
+        if (!this.destroyed && requestId === this.resolveRequestId) {
+          this.showError("Failed to resolve path");
+        }
+      }),
+    );
+  }
 
-    resolveImageSrc(src).then((resolvedSrc) => {
-      // Ignore stale responses (src changed or view destroyed)
-      if (this.destroyed || requestId !== this.resolveRequestId) {
-        return;
-      }
-      if (!resolvedSrc) {
-        this.showError("Failed to resolve path");
-        return;
-      }
-      this.dom.src = resolvedSrc;
-      this.setupLoadHandlers();
-    }).catch((error: unknown) => {
-      imageViewWarn("resolveImageSrc failed:", error);
-      if (!this.destroyed && requestId === this.resolveRequestId) {
-        this.showError("Failed to resolve path");
-      }
-    });
+  /** Set `src` once the image nears the viewport (#1565). */
+  private loadWhenNear(src: string): void {
+    this.cancelLoad = loadImageNearViewport(this.dom, this.editorDom, () => this.assignSrc(src));
+  }
+
+  private assignSrc(src: string): void {
+    this.dom.src = src;
+    this.setupLoadHandlers();
   }
 
   private cleanupLoadHandlers(): void {
@@ -220,6 +250,7 @@ export class ImageNodeView implements NodeView {
 
   destroy(): void {
     this.destroyed = true;
+    this.cancelLoad?.();
     this.cleanupLoadHandlers();
     this.dom.removeEventListener("contextmenu", this.handleContextMenu);
     this.dom.removeEventListener("dblclick", this.handleClick);

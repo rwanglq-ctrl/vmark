@@ -11,6 +11,9 @@
  *   - Uses sourceLine (1-indexed) as primary anchor, matching remark parser output
  *   - Block anchors (code blocks, tables) carry sub-block coordinates for precision
  *   - Falls back to context matching -> word matching -> percentage for column
+ *   - A restore scrolls the caret into view unless told not to: a return to
+ *     the same surface after a tab switch places it only, because the reading
+ *     position is restored separately (#1556)
  *
  * @coordinates-with cursorSync/tiptap.ts — the WYSIWYG counterpart of these functions
  * @coordinates-with cursorSync/markdown.ts — provides markdown syntax stripping
@@ -107,7 +110,8 @@ export function getCursorInfoFromCodeMirror(view: EditorView): CursorInfo {
 function restoreCursorInCodeBlockSource(
   view: EditorView,
   sourceLine: number,
-  anchor: { lineInBlock: number; columnInLine: number }
+  anchor: { lineInBlock: number; columnInLine: number },
+  scrollIntoView: boolean,
 ): boolean {
   // Find the code block start
   const fenceStartLine = fenceStartLineAt(view.state, sourceLine);
@@ -128,7 +132,7 @@ function restoreCursorInCodeBlockSource(
 
   view.dispatch({
     selection: { anchor: pos },
-    scrollIntoView: true,
+    scrollIntoView,
   });
 
   return true;
@@ -140,7 +144,8 @@ function restoreCursorInCodeBlockSource(
 function restoreCursorInTableSource(
   view: EditorView,
   sourceLine: number,
-  anchor: { col: number; offsetInCell: number }
+  anchor: { col: number; offsetInCell: number },
+  scrollIntoView: boolean,
 ): boolean {
   const lineCount = view.state.doc.lines;
   const targetLine = Math.max(1, Math.min(sourceLine, lineCount));
@@ -153,7 +158,7 @@ function restoreCursorInTableSource(
 
   view.dispatch({
     selection: { anchor: pos },
-    scrollIntoView: true,
+    scrollIntoView,
   });
 
   return true;
@@ -163,20 +168,26 @@ function restoreCursorInTableSource(
  * Restore cursor position in CodeMirror from cursor info.
  * Uses sourceLine for direct line lookup - much simpler and more accurate.
  * Uses block anchors for precise positioning in code blocks and tables.
+ * `scrollIntoView = false` places the caret without moving the viewport, for a
+ * restore whose reading position is put back separately (#1556).
  */
-export function restoreCursorInCodeMirror(view: EditorView, cursorInfo: CursorInfo): void {
+export function restoreCursorInCodeMirror(
+  view: EditorView,
+  cursorInfo: CursorInfo,
+  scrollIntoView = true,
+): void {
   const { sourceLine, blockAnchor } = cursorInfo;
 
   // Try block-specific restoration for code blocks and tables
   if (blockAnchor) {
     /* v8 ignore next -- @preserve reason: false branch ("table" anchor kind) not exercised in cursor sync tests */
     if (blockAnchor.kind === "code") {
-      if (restoreCursorInCodeBlockSource(view, sourceLine, blockAnchor)) {
+      if (restoreCursorInCodeBlockSource(view, sourceLine, blockAnchor, scrollIntoView)) {
         return;
       }
     /* v8 ignore start -- @preserve "table" block anchor kind not reached in tests */
     } else if (blockAnchor.kind === "table") {
-      if (restoreCursorInTableSource(view, sourceLine, blockAnchor)) {
+      if (restoreCursorInTableSource(view, sourceLine, blockAnchor, scrollIntoView)) {
         return;
       }
     }
@@ -203,7 +214,7 @@ export function restoreCursorInCodeMirror(view: EditorView, cursorInfo: CursorIn
 
   view.dispatch({
     selection: { anchor: pos },
-    scrollIntoView: true,
+    scrollIntoView,
   });
 }
 

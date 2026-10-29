@@ -131,4 +131,82 @@ describe("routeOpenBySize", () => {
       tier: "small",
     });
   });
+
+  // #1570: WYSIWYG open cost scales with block count, not bytes. A ~500 KB
+  // document with thousands of short blocks froze the window for 31 s while a
+  // 2 MB file of long paragraphs (the byte gate's case) opened in Source mode.
+  describe("block-density routing (#1570)", () => {
+    const SMALL_BYTES = 500 * 1024;
+
+    const mockOpen = (size: number | Error, blocks: number | Error) =>
+      invokeMock.mockImplementation((cmd: string) => {
+        if (cmd === "get_file_size_bytes") {
+          return size instanceof Error ? Promise.reject(size) : Promise.resolve(size);
+        }
+        if (cmd === "count_markdown_blocks") {
+          return blocks instanceof Error ? Promise.reject(blocks) : Promise.resolve(blocks);
+        }
+        return Promise.resolve();
+      });
+
+    it("forces Source mode for a block-dense file under the byte threshold", async () => {
+      mockOpen(SMALL_BYTES, 3_773);
+      const route = await routeOpenBySize("/book.md");
+      expect(route.forceSourceMode).toBe(true);
+      expect(route.tier).toBe("small");
+      expect(route.proceed).toBe(true);
+    });
+
+    it("treats exactly the block threshold as Source mode", async () => {
+      mockOpen(SMALL_BYTES, FILE_SIZE_THRESHOLDS.SOURCE_MODE_DEFAULT_BLOCKS);
+      const route = await routeOpenBySize("/boundary.md");
+      expect(route.forceSourceMode).toBe(true);
+    });
+
+    it("stays in WYSIWYG below the block threshold", async () => {
+      mockOpen(SMALL_BYTES, FILE_SIZE_THRESHOLDS.SOURCE_MODE_DEFAULT_BLOCKS - 1);
+      const route = await routeOpenBySize("/chapter.md");
+      expect(route.forceSourceMode).toBe(false);
+    });
+
+    it("respects autoSourceMode when it is off", async () => {
+      useSettingsStore.getState().updateLargeFileSetting("autoSourceMode", false);
+      mockOpen(SMALL_BYTES, 3_773);
+      const route = await routeOpenBySize("/book.md");
+      expect(route.forceSourceMode).toBe(false);
+      expect(invokeMock).not.toHaveBeenCalledWith("count_markdown_blocks", expect.anything());
+    });
+
+    it("does not count blocks for a non-markdown file", async () => {
+      mockOpen(SMALL_BYTES, 3_773);
+      const route = await routeOpenBySize("/data.json");
+      expect(route.forceSourceMode).toBe(false);
+      expect(invokeMock).not.toHaveBeenCalledWith("count_markdown_blocks", expect.anything());
+    });
+
+    it("does not read a byte-large file just to count blocks", async () => {
+      mockOpen(2 * 1024 * 1024, 3_773);
+      const route = await routeOpenBySize("/large.md");
+      expect(route.forceSourceMode).toBe(true);
+      expect(invokeMock).not.toHaveBeenCalledWith("count_markdown_blocks", expect.anything());
+    });
+
+    it("fails open to WYSIWYG when the block count is unavailable", async () => {
+      mockOpen(SMALL_BYTES, new Error("permission denied"));
+      const route = await routeOpenBySize("/unreadable.md");
+      expect(route.proceed).toBe(true);
+      expect(route.forceSourceMode).toBe(false);
+      expect(route.tier).toBe("small");
+    });
+
+    it("fails open when the counter returns a non-number", async () => {
+      invokeMock.mockImplementation((cmd: string) =>
+        cmd === "get_file_size_bytes"
+          ? Promise.resolve(SMALL_BYTES)
+          : Promise.resolve("not-a-number")
+      );
+      const route = await routeOpenBySize("/odd.md");
+      expect(route.forceSourceMode).toBe(false);
+    });
+  });
 });

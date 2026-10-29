@@ -228,5 +228,12 @@ printf '%s\n' "$first_err" >&2
 if [ "$candidates" != "$sha" ]; then
   echo "✖ check-tag-green: no identical-tree ancestor had green required checks either." >&2
   echo "  Checked: ${candidates}" >&2
+elif [ -n "$tag_tree" ]; then
+  # A squash or rebase merge writes a commit whose parent is the old main, so
+  # the PR head CI checked is not among its ancestors and nothing here can
+  # vouch for it. Only a merge commit keeps the PR head as its parent.
+  echo "✖ check-tag-green: no ancestor has its tree, so no checked commit can vouch for it." >&2
+  echo "  A squash or rebase merge does this. Land a release commit with" >&2
+  echo "  \`gh pr merge --merge\` (see .claude/rules/40-version-bump.md)." >&2
 fi
 exit 1

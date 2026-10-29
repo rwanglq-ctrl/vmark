@@ -35,6 +35,12 @@ Sous Windows et Linux, c'est le système qui dessine la barre de titre (et, sous
 
 Lorsqu'il est activé, la ligne de thème unique est remplacée par deux lignes — **Thème clair** (utilisé lorsque le système est en mode clair, Papier par défaut) et **Thème sombre** (utilisé en mode sombre, Nuit par défaut). VMark bascule de l'un à l'autre dès que l'apparence du système change ; votre choix de thème manuel est conservé et restauré lorsque vous désactivez l'option.
 
+### Barre latérale
+
+| Paramètre | Description | Par défaut | Options |
+|-----------|-------------|------------|---------|
+| Style de la barre latérale | Le cadre de la barre latérale et du rail des espaces de travail. **Pleine hauteur** les place le long du bord de la fenêtre avec un fin séparateur, comme les barres latérales de macOS ; **Carte** les fait flotter dans la fenêtre avec des coins arrondis et une ombre. S'applique aussi à la fenêtre des réglages | Pleine hauteur | Pleine hauteur, Carte |
+
 ### Fenêtre
 
 | Paramètre | Description | Par défaut |
@@ -142,7 +148,7 @@ Deux espaces est le style de saut de ligne dur le plus compatible — il fonctio
 
 | Paramètre | Description | Par défaut | Options |
 |-----------|-------------|------------|---------|
-| Mode Source automatique | Ouvrir les fichiers de plus de 1 Mo en mode Source (saute le WYSIWYG pour préserver la fluidité des performances). Vous pouvez passer en WYSIWYG depuis la barre d'état à tout moment | Activé | Activé / Désactivé |
+| Mode Source automatique | Ouvrir les fichiers volumineux en mode Source — fichiers de plus de 1 Mo ou markdown avec 1 200+ blocs estimés (saute le WYSIWYG pour préserver la fluidité des performances). Vous pouvez passer en WYSIWYG depuis la barre d'état à tout moment | Activé | Activé / Désactivé |
 | Avertir au-dessus de la taille | Afficher une invite de confirmation avant d'ouvrir des fichiers de plus de 5 Mo. Les fichiers de 50 Mo ou plus sont toujours refusés | Activé | Activé / Désactivé |
 
 Voir [Fichiers volumineux](/fr/guide/large-files) pour la ventilation complète de la façon dont les fichiers volumineux sont gérés.
@@ -450,7 +456,7 @@ Configurer le panneau de terminal intégré. Ouvrez le terminal avec `` Ctrl + `
 | Clignotement du curseur | Si le curseur du terminal clignote | Activé | Activé / Désactivé |
 | Copier à la sélection | Copier automatiquement le texte du terminal sélectionné dans le presse-papiers | Désactivé | Activé / Désactivé |
 | Afficher automatiquement les transcriptions | Afficher le Markdown, les tableaux et les diagrammes Mermaid Claude/Codex à côté de la CLI du terminal. Ajoute un hook SessionStart local à la configuration de Claude Code et de Codex ; redémarrez les sessions CLI en cours après activation | Désactivé | Activé / Désactivé |
-| Rendu WebGL | Utiliser le rendu accéléré GPU pour le terminal. Désactiver en cas de problèmes de saisie IME. Nécessite un redémarrage du terminal | Activé | Activé / Désactivé |
+| Rendu WebGL | Utiliser le rendu accéléré GPU pour le terminal. Désactiver en cas de problèmes de saisie IME. Nécessite un redémarrage du terminal. macOS et Windows uniquement — Linux utilise toujours le rendu DOM | Activé | Activé / Désactivé |
 | Presse-papiers distant (OSC 52) | Permettre aux programmes exécutés dans le terminal — via ssh, dans tmux — de copier vers le presse-papiers du système. Le canal fonctionne en écriture seule : la lecture du presse-papiers est toujours refusée, car n'importe quelle sortie affichée dans le terminal pourrait la demander | Activé | Activé / Désactivé |
 | Historique de défilement | Nombre de lignes de sortie que chaque session conserve dans son historique de défilement. Des valeurs plus élevées consomment plus de mémoire | 5 000 | 1 000 / 5 000 / 10 000 / 50 000 |
 | Mode lecteur d'écran | Exposer la sortie du terminal aux technologies d'assistance (VoiceOver). Désactivé par défaut pour des raisons de performance | Désactivé | Activé / Désactivé |

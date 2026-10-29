@@ -8,12 +8,15 @@
  *   - Cmd+C with selection → copy to clipboard; without selection → pass through
  *     for SIGINT (Ctrl+C), maintaining standard terminal behavior.
  *   - Cmd+V → paste through xterm, preserving bracketed-paste boundaries.
- *   - Linux follows Omarchy: Ctrl+letter belongs to the shell except Ctrl+C
- *     (copy with a selection, else SIGINT) and Ctrl+V (paste), which are what
- *     Omarchy's Super+C / Super+V send to a non-terminal window. Ctrl+Insert /
- *     Shift+Insert copy/paste like Omarchy's terminals; Ctrl+Shift+C/V/F also
- *     copy/paste/search.
- *   - Cmd+K → clear terminal scrollback and viewport.
+ *   - Linux follows the usual Linux terminal convention (GNOME Terminal,
+ *     Konsole, kitty, …): plain Ctrl+letter belongs to the shell, terminal
+ *     actions take Ctrl+Shift+A/C/F/K/V, and Ctrl+Insert / Shift+Insert copy /
+ *     paste. Exceptions: Ctrl+C (copy with a selection, else SIGINT) and
+ *     Ctrl+V (paste), which desktops that remap Super+C/V (Omarchy, for one)
+ *     send to a non-terminal window. Ctrl+1-5 stays: shells don't use it.
+ *   - Windows keeps Ctrl+A/K/F (select all / clear / search).
+ *   - Cmd+K → clear terminal scrollback and viewport (preventDefault so the
+ *     native Insert Link accelerator, CmdOrCtrl+K, doesn't ALSO fire).
  *   - The configured panel chords — Toggle Terminal (default Ctrl+`) and Focus
  *     Terminal (default Ctrl+Shift+`) → act and fully consume the event, so the
  *     shell never sees the key and the window handler doesn't double-fire it.
@@ -102,7 +105,7 @@ export interface KeyHandlerCallbacks {
 /**
  * Create a custom key event handler for the terminal.
  * Handles Cmd+C (copy/SIGINT), Cmd+V (paste), Cmd+K (clear), Cmd+F (search),
- * Cmd+1-5 (switch tab).
+ * Cmd+1-5 (switch tab); on Linux the clear/search/select-all chords take Shift.
  * Returns a handler for `term.attachCustomKeyEventHandler()`.
  */
 export function createTerminalKeyHandler(
@@ -170,7 +173,7 @@ export function createTerminalKeyHandler(
     if (handleReadlineNavKey(event, ptyRef)) return false;
 
     const linux = getRuntimePlatform() === "linux";
-    // Omarchy's terminals copy with Ctrl+Insert and paste with Shift+Insert.
+    // Linux terminal clipboard chords: Ctrl+Insert copies, Shift+Insert pastes.
     // Consume both so xterm never sends their escape sequences to the shell.
     if (linux && event.key === "Insert" && !event.metaKey && !event.altKey
       && event.ctrlKey !== event.shiftKey) {
@@ -180,9 +183,8 @@ export function createTerminalKeyHandler(
       return false;
     }
 
-    // Preserve readline on macOS and Linux. On Linux, Ctrl+C and Ctrl+V stay
-    // with VMark because Omarchy's Super+C / Super+V arrive as exactly those
-    // chords; Ctrl+C still interrupts when nothing is selected.
+    // Preserve readline on macOS and Linux. On Linux plain Ctrl+letter goes to
+    // the shell except Ctrl+C / Ctrl+V (see header); Ctrl+digit is not matched.
     if (isMacPlatform() && event.ctrlKey && !event.metaKey) return true;
     if (linux && event.ctrlKey && !event.metaKey && !event.shiftKey
       && /^[abd-uw-z]$/i.test(event.key)) return true;
@@ -223,12 +225,13 @@ export function createTerminalKeyHandler(
         return false;
       }
       case "k": {
+        event.preventDefault(); // else the CmdOrCtrl+K Insert Link accelerator fires too
         term.clear();
         return false;
       }
       case "f": {
-        // Linux uses Ctrl+Shift+F so Ctrl+F remains readline forward-char.
-        // Other platforms keep plain Cmd/Ctrl+F; Alt variants pass through.
+        // Linux uses the Linux-terminal Ctrl+Shift+F so Ctrl+F stays readline
+        // forward-char. Other platforms keep Cmd/Ctrl+F; Alt passes through.
         if ((!linux && event.shiftKey) || event.altKey) return true;
         // preventDefault suppresses the native Edit-menu "Find" accelerator
         // (CmdOrCtrl+F). Without it, the accelerator ALSO fires and opens the

@@ -166,7 +166,11 @@ describe("native click on a link anchor", () => {
     const { view, cleanup } = mount(doc);
     openUrlMock.mockClear();
     vi.mocked(openLinkTarget).mockClear();
-    const img = view.dom.querySelector("img")!;
+    // prosemirror-view wraps an inline node inside a mark with zero-width
+    // `img.ProseMirror-separator` cursor helpers; the first `img` is one of
+    // those, not the image a user can click.
+    const img = view.dom.querySelector("img:not(.ProseMirror-separator)")!;
+    expect(img.getAttribute("src")).toBe("i.png");
     expect(clickSeenByWindow(img, { ctrlKey: true })).toBe(true);
     expect(openLinkTarget).toHaveBeenCalledTimes(1);
     await vi.mocked(openLinkTarget).mock.results[0].value;

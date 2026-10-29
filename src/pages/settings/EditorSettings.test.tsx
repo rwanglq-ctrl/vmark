@@ -195,7 +195,7 @@ describe("EditorSettings — large files", () => {
   it("the two toggles write largeFile.autoSourceMode and largeFile.warnAbove5MB independently", async () => {
     const user = userEvent.setup();
     render(<EditorSettings />);
-    const autoSource = screen.getByRole("switch", { name: /^open files over 1 mb in source mode$/i });
+    const autoSource = screen.getByRole("switch", { name: /^open large files in source mode$/i });
     const warn = screen.getByRole("switch", { name: /^warn before opening files over 5 mb$/i });
     expect(autoSource).toBeChecked();
     expect(warn).toBeChecked();

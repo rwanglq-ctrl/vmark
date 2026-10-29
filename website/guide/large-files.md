@@ -4,22 +4,34 @@ VMark opens most markdown files instantly, but very large files need extra care 
 
 ## What counts as "large"
 
-VMark classifies a file by size before it opens:
+VMark classifies a file by size and, for markdown, by an estimated block count before it opens:
 
-| Size | Tier | What happens |
+| Size or block count | Tier | What happens |
 |------|------|--------------|
-| < 1 MB | Small | Opens in WYSIWYG (rich-text) mode instantly. |
-| 1 MB – 5 MB | Large | Opens in **Source mode** by default — sub-second. StatusBar offers "Switch to WYSIWYG". |
+| < 1 MB and fewer than 1,200 estimated blocks | Small | Opens in WYSIWYG (rich-text) mode instantly. |
+| 1 MB – 5 MB, or 1,200+ estimated blocks | Large | Opens in **Source mode** by default — sub-second. StatusBar offers "Switch to WYSIWYG". |
 | 5 MB – 50 MB | Huge | Confirmation dialog appears first. Opens in Source mode only. |
 | ≥ 50 MB | Refused | VMark refuses to open the file. Use `less`, `bat`, or a similar tool instead. |
 
-Size is checked via the operating system without reading the file, so the decision is fast and does not preload data.
+Size is checked via the operating system without reading the file. When a markdown file is under 1 MB, VMark then estimates its block count with a line scan of the file's bytes — not a markdown parse — so the decision stays fast and never loads the document into the webview.
 
 ## Why Source mode for large files
 
 Source mode uses CodeMirror with viewport virtualization — only the visible portion of the document is rendered. WYSIWYG mode uses Tiptap/ProseMirror, which must build a DOM node for every block in the document. On a 1.4 MB / ~2,250-block markdown file this takes about 15 seconds on first open; Source mode opens the same file in under a second.
 
-Parsing is not the bottleneck — it is ProseMirror's view construction. Moving parse off the main thread would not meaningfully improve the perceived wait.
+Most of that time is building and laying out the view, not parsing. On a long CJK document measured on a slow machine, the parse was between a quarter and two fifths of the editor's open cost.
+
+Block count, not file size, is what the view-building cost follows. Three fixtures of nearly identical size (377–397 KB) differing only in how their bytes are cut into blocks opened in 3.6, 5.2 and 18 seconds at 601, 1,201 and 3,401 blocks. A 524 KB document of 3,773 short blocks took over 30 seconds on that machine — under the 1 MB byte threshold, but far past the point where the window stops answering. That is why the block estimate can route a file to Source mode on its own.
+
+## While a document opens
+
+A window answers its menus, shortcuts and close button before VMark builds the document's rich-text view, and the document appears just after. A long document used to be built first, and on a slow machine that could keep the window from becoming ready: menus responded late, and the log said *menu commands did not mount within 5000ms*.
+
+What WYSIWYG does at open also stays in proportion to the document:
+
+- Images load as they come near the visible area.
+- **CJK Letter Spacing** (**Settings → Editor → Typography**) does no work while it is off, its default, and scans the document once when it is on.
+- Decorations such as code highlighting, CJK spacing and lint marks cost about linearly in the document's length. Very long documents used to cost quadratically.
 
 ## Status bar cues
 
@@ -31,7 +43,7 @@ Parsing is not the bottleneck — it is ProseMirror's view construction. Moving 
 
 Open **Settings → Editor → Large Files**:
 
-- **Open files over 1 MB in Source mode automatically** *(on by default)* — turn off if you prefer WYSIWYG for files up to 5 MB, accepting the longer open time.
+- **Open large files in Source mode automatically** *(on by default)* — covers files over 1 MB and block-dense markdown. Turn off if you prefer WYSIWYG for files up to 5 MB, accepting the longer open time.
 - **Warn before opening files over 5 MB** *(on by default)* — turn off to skip the confirmation dialog for files between 5 MB and 50 MB. They will still open in Source mode.
 
 The 50 MB hard refusal is not user-adjustable. The webview cannot safely hold arbitrarily large strings without risk of out-of-memory crashes.
@@ -51,5 +63,5 @@ The 50 MB hard refusal is not user-adjustable. The webview cannot safely hold ar
 
 ## Known limitations
 
-- The thresholds are byte sizes, which are a proxy for the real cost (block count). A 600 KB file with thousands of short blocks can be slower than a 1.2 MB file of long paragraphs. The defaults are conservative.
-- WYSIWYG still builds every block of the document when it opens — only inline math formulas render later, as they come near the visible area — so switching a large file to WYSIWYG costs the full open time described above.
+- The block count is an estimate, not a parse: blank-separated text, headings, list items, table rows and each fenced code block count as one block, while code inside a fence and frontmatter lines are skipped. A document shaped unusually may be routed to Source mode when WYSIWYG would have been fast enough; **Switch to WYSIWYG** is one click. Non-markdown files are never routed by block count.
+- WYSIWYG still builds every block of the document when it opens — only images and inline math formulas wait until they come near the visible area — so switching a large file to WYSIWYG costs the full open time described above.

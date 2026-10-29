@@ -18,6 +18,9 @@
  *     timeout for large docs — see getAdaptiveDebounceDelay.
  *   - A tab whose document the editor could not parse gets no write
  *     at all: the editor holds empty or stale content, not the document.
+ *   - So does an editor whose initial load has not run yet (Save or an MCP
+ *     flush in the first frames): it holds the empty placeholder, and
+ *     writing that would replace the document with nothing.
  *   - Every flush reports whether a USER edit is behind it (userEditPending,
  *     set by scheduleFlush). Auto-save and Save All flush before reading
  *     isDirty, so a flush that claimed to be an edit would dirty a document
@@ -27,6 +30,8 @@
  * @coordinates-with components/Editor/TiptapEditor.tsx — sole consumer
  * @coordinates-with hooks/useTiptapUnmountFlush.ts — consumes the pending-timer refs
  * @coordinates-with utils/wysiwygEditPending.ts — publishes userEditPending to auto-save
+ * @coordinates-with services/editor/contentApplied.ts — a flush before the initial load writes nothing
+ * @coordinates-with services/agentJournal/collectors/wysiwyg/wysiwygCollector.ts — told of each write before the store
  * @module components/Editor/useTiptapFlush
  */
 import { useCallback, useEffect, useRef } from "react";
@@ -34,12 +39,14 @@ import type { MutableRefObject } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import type { HardBreakStyleOnSave } from "@/utils/linebreakDetection";
 import { serializeMarkdown } from "@/utils/markdownPipeline";
+import { noteWysiwygFlush } from "@/services/agentJournal/collectors/wysiwyg/wysiwygCollector";
 import { resolveHardBreakStyle } from "@/utils/linebreaks";
 import { useTabStore } from "@/stores/tabStore";
 import { useDocumentStore, useLargeFileSessionStore } from "@/stores/documentStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { setWysiwygEditPending } from "@/utils/wysiwygEditPending";
 import { getAdaptiveDebounceDelay } from "./tiptapEditorHelpers";
+import { hasContentApplied } from "@/services/editor/contentApplied";
 
 interface TiptapFlushOptions {
   /** Tab this editor is pinned to (#1081) — store writes target this tab. */
@@ -100,9 +107,24 @@ export function useTiptapFlush(options: TiptapFlushOptions): TiptapFlushHandle {
 
   const flushToStore = useCallback(
     (editor: TiptapEditor) => {
-      if (pendingRaf.current) {
+      // This flush writes what any pending RAF or debounce would: cancel both,
+      // or a large document's debounce writes the same edit a second time.
+      if (pendingRaf.current !== null) {
         cancelAnimationFrame(pendingRaf.current);
         pendingRaf.current = null;
+      }
+      if (pendingDebounceTimeout.current !== null) {
+        clearTimeout(pendingDebounceTimeout.current);
+        pendingDebounceTimeout.current = null;
+      }
+
+      // Nothing has been loaded into this editor yet — it holds the empty
+      // placeholder it mounted with, and Save, Save All or the MCP bridge can
+      // reach it before the deferred initial load runs. Writing it would
+      // replace the tab's text with "".
+      if (!hasContentApplied(editor)) {
+        setUserEditPending(false);
+        return;
       }
 
       const tabId = activeTabId ?? useTabStore.getState().activeTabId[windowLabel];
@@ -114,7 +136,7 @@ export function useTiptapFlush(options: TiptapFlushOptions): TiptapFlushHandle {
         return;
       }
 
-      const markdown = serializeMarkdown(editor.schema, editor.state.doc, {
+      const options = {
         preserveLineBreaks: preserveLineBreaksRef.current,
         // Read directly from the store (no new ref threaded through the editor
         // chain); capture is unconditional, so toggling needs no reparse.
@@ -126,7 +148,11 @@ export function useTiptapFlush(options: TiptapFlushOptions): TiptapFlushHandle {
           /* v8 ignore next -- @preserve reason: doc?.hardBreakStyle ?? fallback only when doc is null; doc always present for active tab */
           return resolveHardBreakStyle(doc?.hardBreakStyle ?? "unknown", hardBreakStyleOnSaveRef.current);
         })(),
-      });
+      };
+      const markdown = serializeMarkdown(editor.schema, editor.state.doc, options);
+      // The journal certifies this write against the editor's transactions;
+      // it must hear of it before the store does.
+      noteWysiwygFlush(editor, markdown, options);
 
       isInternalChange.current = true;
       lastExternalContent.current = markdown;
@@ -138,7 +164,7 @@ export function useTiptapFlush(options: TiptapFlushOptions): TiptapFlushHandle {
       setContent(markdown, { fromUserEdit });
 
       // Cancel previous RAF if pending, then schedule reset
-      if (internalChangeRaf.current) {
+      if (internalChangeRaf.current !== null) {
         cancelAnimationFrame(internalChangeRaf.current);
       }
       internalChangeRaf.current = requestAnimationFrame(() => {
@@ -156,11 +182,11 @@ export function useTiptapFlush(options: TiptapFlushOptions): TiptapFlushHandle {
       setUserEditPending(true);
 
       // Cancel any pending flush
-      if (pendingRaf.current) {
+      if (pendingRaf.current !== null) {
         cancelAnimationFrame(pendingRaf.current);
         pendingRaf.current = null;
       }
-      if (pendingDebounceTimeout.current) {
+      if (pendingDebounceTimeout.current !== null) {
         clearTimeout(pendingDebounceTimeout.current);
         pendingDebounceTimeout.current = null;
       }

@@ -66,9 +66,15 @@ When the terminal is focused, `Mod + =` / `-` / `0` zoom the **terminal** font (
 
 Prompt navigation (`Mod + ↑` / `Mod + ↓`) requires shell integration — see [Shell integration](#shell-integration) below.
 
+**Linux:** `Ctrl` + a letter goes to the shell, so readline keys such as `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` and `Ctrl + W` work as in any Linux terminal. The terminal's own letter shortcuts move to `Ctrl + Shift`: `Ctrl + Shift + F` searches, `Ctrl + Shift + K` clears, `Ctrl + Shift + A` selects all, and `Ctrl + Shift + C` / `Ctrl + Shift + V` copy and paste. `Ctrl + C` still copies a selection (otherwise it sends SIGINT) and `Ctrl + V` still pastes; `Ctrl + Insert` / `Shift + Insert` also copy and paste.
+
 ::: tip
 `Mod + C` without a text selection sends SIGINT to the running process — the same as pressing Ctrl+C in a regular terminal.
 :::
+
+## Reading scrollback while typing
+
+Scroll up to read earlier output and keep typing: the viewport stays where you are, and a **floating prompt** appears at the bottom of the terminal with a live copy of the rows you are typing into — the shell prompt, or the input box of a TUI such as Claude Code. Keys still go to the shell, so tab completion, history and input methods work as usual. Click the arrow at its right end to jump back to the prompt; it disappears on its own once the prompt is back in view. Pressing Enter or Ctrl+C also jumps back, so you see what the command — or the prompt you sent to a TUI — does next; every other key, including Shift+Enter, leaves the viewport alone. Full-screen programs (vim, less) have no scrollback, so it never appears there.
 
 ## Search
 
@@ -149,6 +155,7 @@ VMark sets these environment variables in every terminal session:
 |----------|-------|
 | `TERM` | `xterm-256color` |
 | `TERM_PROGRAM` | `WezTerm` |
+| `TERM_PROGRAM_VERSION` | `20240203-110809-5046fc22` |
 | `VMARK_WORKSPACE` | Workspace root path (when a folder is open) |
 | `PATH` | Full login shell PATH (same as your system terminal) |
 | `COLORTERM` | `truecolor` |
@@ -187,6 +194,22 @@ Unless you pick a shell in the terminal settings, VMark starts your login shell.
 Standard shell shortcuts like `Ctrl+R` (reverse history search in zsh/bash) work when the terminal is focused — they are not intercepted by the editor.
 
 When the workspace root changes after the terminal is already running, idle sessions automatically `cd` to the new root. A session busy with a command (say, `vim` or `less`) is not interrupted: it changes directory once the command finishes, which needs [shell integration](#shell-integration) to detect. With the [workspace rail](/guide/workspace-rail) on, sessions that belong to a workspace keep their own directory.
+
+## AI CLI tools and their own browser access
+
+An AI CLI tool such as Claude Code or Codex CLI runs as an ordinary program in the terminal. VMark gives it three separate things, and keeping them apart makes a broken setup much easier to diagnose:
+
+| What | Who provides it | What it lets the CLI do |
+|---|---|---|
+| The terminal | VMark | Run commands with your login shell and `PATH`, as in any terminal window |
+| VMark MCP | VMark, after you install its configuration in **Settings → Integrations** | Read and write the document open in VMark, through VMark's own MCP tools |
+| Browser tools | The AI client, not VMark | Reach a browser through the client's own integration, such as a Chrome extension or a browser-automation server |
+
+VMark does not configure, proxy or vouch for the browser tools. A browser connection is verified by reading a real page title from the session — a zero exit code and a tool name in the catalog prove neither. Extension installation, desktop-app connectivity, tool discovery and actual page access are four separate checks.
+
+Restart boundaries matter. A freshly started CLI process may still talk to a shared background app-server started earlier, so the client version and the server version can differ; record both when troubleshooting. VMark's terminal does not restart or isolate those processes for you.
+
+Do not enable remote debugging, copy trust overrides, or loosen native-bridge checks to make a browser connection work. Those widen the permission model for every page the browser can reach, and a result obtained that way is not a setup recipe.
 
 ## Microphone, camera and Apple Events on macOS
 
@@ -244,7 +267,7 @@ Each terminal follows its exact session rather than whichever transcript was mod
 | Terminal bell | Off / Visual / Audible | Visual |
 | Minimum contrast | Off / WCAG AA (4.5:1) / WCAG AAA (7:1) / Maximum | WCAG AA (4.5:1) |
 
-Most changes apply immediately to every open session — panel size and position, font size, line height, cursor, Copy on Select, Mac Option as Meta, Scrollback, Screen Reader Mode, Terminal bell and Minimum contrast. **Shell**, the **WebGL renderer**, **Remote Clipboard** and **Shell Integration** are fixed when a session starts, so they apply to sessions opened afterwards. **Panel Size** goes up to 80 % of the available space. The editor keeps a minimum size in pixels, so it never disappears entirely no matter how large the terminal gets. Double-click the resize handle to jump straight to the maximum and back again without changing the stored size. **Mac Option as Meta** routes the macOS Option key as Meta in the integrated terminal so emacs, tmux, and similar tools see Alt-prefixed shortcuts (macOS only); it is on by default, so Option+Arrow does word movement rather than inserting accented characters. **Shell Integration** is available on macOS and Linux (hidden on Windows). **Remote Clipboard** is write-only (reads are always refused) and is described below. **Scrollback** controls how many lines of output each session retains in its scroll history — higher values use more memory. **Screen Reader Mode** exposes terminal output to assistive technology such as VoiceOver; it is off by default for performance. **Terminal bell** chooses how a bell (BEL) is signalled — a visual background-activity mark on the session tab, a soft audible beep (which also flags a background session's tab so you can find it), or nothing. **Minimum contrast** lifts faint terminal text to a readable contrast ratio against its background; raise it for accessibility or set it to Off to disable the lift.
+Most changes apply immediately to every open session — panel size and position, font size, line height, cursor, Copy on Select, Mac Option as Meta, Scrollback, Screen Reader Mode, Terminal bell and Minimum contrast. **Shell**, the **WebGL renderer** (not available on Linux), **Remote Clipboard** and **Shell Integration** are fixed when a session starts, so they apply to sessions opened afterwards. **Panel Size** goes up to 80 % of the available space. The editor keeps a minimum size in pixels, so it never disappears entirely no matter how large the terminal gets. Double-click the resize handle to jump straight to the maximum and back again without changing the stored size. **Mac Option as Meta** routes the macOS Option key as Meta in the integrated terminal so emacs, tmux, and similar tools see Alt-prefixed shortcuts (macOS only); it is on by default, so Option+Arrow does word movement rather than inserting accented characters. **Shell Integration** is available on macOS and Linux (hidden on Windows). **Remote Clipboard** is write-only (reads are always refused) and is described below. **Scrollback** controls how many lines of output each session retains in its scroll history — higher values use more memory. **Screen Reader Mode** exposes terminal output to assistive technology such as VoiceOver; it is off by default for performance. **Terminal bell** chooses how a bell (BEL) is signalled — a visual background-activity mark on the session tab, a soft audible beep (which also flags a background session's tab so you can find it), or nothing. **Minimum contrast** lifts faint terminal text to a readable contrast ratio against its background; raise it for accessibility or set it to Off to disable the lift.
 
 ::: tip Terminal font family
 The terminal uses the **Mono Font** from **Settings → Editor**, not a font of

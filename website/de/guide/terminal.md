@@ -66,9 +66,15 @@ Wenn das Terminal fokussiert ist, zoomen `Mod + =` / `-` / `0` die **Terminal**-
 
 Die Prompt-Navigation (`Mod + ↑` / `Mod + ↓`) erfordert Shell-Integration — siehe [Shell-Integration](#shell-integration) weiter unten.
 
+**Linux:** `Ctrl` + Buchstabe geht an die Shell, sodass Readline-Tasten wie `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` und `Ctrl + W` wie in jedem Linux-Terminal funktionieren. Die eigenen Buchstaben-Kürzel des Terminals wandern auf `Ctrl + Shift`: `Ctrl + Shift + F` sucht, `Ctrl + Shift + K` leert, `Ctrl + Shift + A` wählt alles aus, und `Ctrl + Shift + C` / `Ctrl + Shift + V` kopieren und fügen ein. `Ctrl + C` kopiert weiterhin eine Auswahl (sonst sendet es SIGINT) und `Ctrl + V` fügt weiterhin ein; `Ctrl + Insert` / `Shift + Insert` kopieren und fügen ebenfalls ein.
+
 ::: tip
 `Mod + C` ohne Textauswahl sendet SIGINT an den laufenden Prozess — dasselbe wie Strg+C in einem regulären Terminal.
 :::
+
+## Verlauf lesen und dabei tippen
+
+Scrolle nach oben, um frühere Ausgaben zu lesen, und tippe einfach weiter: Die Ansicht bleibt, wo sie ist, und am unteren Rand des Terminals erscheint eine **schwebende Eingabezeile** mit einer Live-Kopie der Zeilen, in die du tippst — der Shell-Prompt oder das Eingabefeld eines TUI wie Claude Code. Tasten gehen weiterhin an die Shell, daher funktionieren Tab-Vervollständigung, Verlauf und Eingabemethoden wie gewohnt. Ein Klick auf den Pfeil am rechten Ende springt zurück zum Prompt; sobald der Prompt wieder sichtbar ist, verschwindet sie von selbst. Auch Enter oder Strg+C springen zurück, damit du siehst, was der Befehl — oder die an ein TUI gesendete Eingabe — als Nächstes tut; jede andere Taste, auch Umschalt+Enter, lässt die Ansicht stehen. Vollbildprogramme (vim, less) haben keinen Verlauf, dort erscheint sie nie.
 
 ## Suche
 
@@ -153,6 +159,7 @@ VMark setzt diese Umgebungsvariablen in jeder Terminal-Sitzung:
 |----------|------|
 | `TERM` | `xterm-256color` |
 | `TERM_PROGRAM` | `WezTerm` |
+| `TERM_PROGRAM_VERSION` | `20240203-110809-5046fc22` |
 | `VMARK_WORKSPACE` | Arbeitsbereichsstammverzeichnis (wenn ein Ordner geöffnet ist) |
 | `PATH` | Vollständiger Login-Shell-PATH (wie in Ihrem System-Terminal) |
 | `COLORTERM` | `truecolor` |
@@ -194,6 +201,22 @@ Sofern Sie in den Terminal-Einstellungen keine Shell auswählen, startet VMark I
 Standard-Shell-Kürzel wie `Strg+R` (Rückwärtshistorie-Suche in zsh/bash) funktionieren, wenn das Terminal fokussiert ist — sie werden nicht vom Editor abgefangen.
 
 Wenn sich das Arbeitsbereichsstammverzeichnis ändert, nachdem das Terminal bereits läuft, wechseln untätige Sitzungen automatisch per `cd` zum neuen Stammverzeichnis. Eine Sitzung, die mit einem Befehl beschäftigt ist (etwa `vim` oder `less`), wird nicht unterbrochen: Sie wechselt das Verzeichnis, sobald der Befehl beendet ist, was [Shell-Integration](#shell-integration) zur Erkennung voraussetzt. Mit eingeschalteter [Workspace-Leiste](/de/guide/workspace-rail) behalten Sitzungen, die zu einem Arbeitsbereich gehören, ihr eigenes Verzeichnis.
+
+## KI-CLI-Tools und ihr eigener Browserzugriff
+
+Ein KI-CLI-Tool wie Claude Code oder Codex CLI läuft als gewöhnliches Programm im Terminal. VMark gibt ihm drei getrennte Dinge, deren Unterscheidung ein fehlerhaftes Setup deutlich leichter diagnostizierbar macht:
+
+| Was | Wer es bereitstellt | Was es der CLI erlaubt |
+|---|---|---|
+| Das Terminal | VMark | Befehle mit Ihrer Login-Shell und Ihrem `PATH` ausführen, wie in jedem Terminalfenster |
+| VMark MCP | VMark, nachdem Sie seine Konfiguration unter **Einstellungen → Integrationen** installiert haben | Das in VMark geöffnete Dokument über VMarks eigene MCP-Tools lesen und schreiben |
+| Browser-Tools | Der KI-Client, nicht VMark | Über die eigene Integration des Clients auf einen Browser zugreifen, etwa eine Chrome-Erweiterung oder einen Browser-Automatisierungsdienst |
+
+VMark konfiguriert, vermittelt und verbürgt die Browser-Tools nicht. Eine Browser-Verbindung gilt als bestätigt, wenn ein echter Seitentitel aus der Sitzung gelesen wird — ein Exit-Code 0 und ein Toolname im Katalog beweisen keines von beidem. Erweiterungsinstallation, Konnektivität der Desktop-App, Tool-Erkennung und tatsächlicher Seitenzugriff sind vier getrennte Prüfungen.
+
+Neustartgrenzen sind wichtig. Ein frisch gestarteter CLI-Prozess kann weiterhin mit einem gemeinsam genutzten Hintergrund-App-Server sprechen, der früher gestartet wurde; Client- und Serverversion können daher abweichen. Halten Sie beide bei der Fehlersuche fest. VMarks Terminal startet diese Prozesse weder neu noch isoliert es sie für Sie.
+
+Aktivieren Sie kein Remote-Debugging, kopieren Sie keine Trust-Overrides und lockern Sie keine Native-Bridge-Prüfungen, um eine Browser-Verbindung zum Laufen zu bringen. Das erweitert das Berechtigungsmodell für jede Seite, die der Browser erreichen kann, und ein so erzieltes Ergebnis ist kein Setup-Rezept.
 
 ## Mikrofon, Kamera und Apple Events unter macOS
 
@@ -254,7 +277,7 @@ Jedes Terminal folgt genau seiner eigenen Sitzung statt dem zuletzt geänderten 
 | Terminal-Glocke | Aus / Visuell / Hörbar | Visuell |
 | Mindestkontrast | Aus / WCAG AA (4,5:1) / WCAG AAA (7:1) / Maximal | WCAG AA (4,5:1) |
 
-Die meisten Änderungen werden sofort auf alle geöffneten Sitzungen angewendet — Panel-Größe und -Position, Schriftgröße, Zeilenhöhe, Cursor, Bei Auswahl kopieren, Mac Option als Meta, Scrollback-Puffer, Screenreader-Modus, Terminal-Glocke und Mindestkontrast. **Shell**, der **WebGL-Renderer**, die **Zwischenablage aus der Ferne** und die **Shell-Integration** werden beim Start einer Sitzung festgelegt und gelten daher erst für danach geöffnete Sitzungen. Die **Panel-Größe** reicht bis zu 80 % des verfügbaren Platzes. Der Editor behält eine Mindestgröße in Pixeln, sodass er nie ganz verschwindet, egal wie groß das Terminal wird. Ein Doppelklick auf den Größengriff springt direkt zum Maximum und wieder zurück, ohne die gespeicherte Größe zu ändern. **Mac Option als Meta** leitet die macOS-Option-Taste im integrierten Terminal als Meta weiter, sodass Werkzeuge wie emacs, tmux und ähnliche Alt-präfigierte Tastenkürzel sehen (nur macOS); die Einstellung ist standardmäßig aktiviert, sodass Option+Pfeil wortweise springt, statt Zeichen mit Akzent einzufügen. Die **Shell-Integration** ist unter macOS und Linux verfügbar (unter Windows ausgeblendet). Die **Zwischenablage aus der Ferne** ist nur schreibend (Lesezugriffe werden immer verweigert) und wird unten beschrieben. **Scrollback-Puffer** legt fest, wie viele Ausgabezeilen jede Sitzung in ihrem Scrollverlauf behält — höhere Werte benötigen mehr Speicher. Der **Screenreader-Modus** macht die Terminalausgabe für assistive Technologien wie VoiceOver zugänglich; er ist aus Leistungsgründen standardmäßig deaktiviert. **Terminal-Glocke** bestimmt, wie eine Glocke (BEL) signalisiert wird — als visuelle Markierung für Hintergrundaktivität auf dem Sitzungs-Tab, als leiser hörbarer Piepton (der zusätzlich den Tab einer Hintergrundsitzung markiert, damit Sie ihn finden) oder gar nicht. **Mindestkontrast** hebt blassen Terminaltext auf ein lesbares Kontrastverhältnis zu seinem Hintergrund an; erhöhen Sie den Wert für bessere Barrierefreiheit oder stellen Sie ihn auf Aus, um die Anhebung abzuschalten.
+Die meisten Änderungen werden sofort auf alle geöffneten Sitzungen angewendet — Panel-Größe und -Position, Schriftgröße, Zeilenhöhe, Cursor, Bei Auswahl kopieren, Mac Option als Meta, Scrollback-Puffer, Screenreader-Modus, Terminal-Glocke und Mindestkontrast. **Shell**, der **WebGL-Renderer** (unter Linux nicht verfügbar), die **Zwischenablage aus der Ferne** und die **Shell-Integration** werden beim Start einer Sitzung festgelegt und gelten daher erst für danach geöffnete Sitzungen. Die **Panel-Größe** reicht bis zu 80 % des verfügbaren Platzes. Der Editor behält eine Mindestgröße in Pixeln, sodass er nie ganz verschwindet, egal wie groß das Terminal wird. Ein Doppelklick auf den Größengriff springt direkt zum Maximum und wieder zurück, ohne die gespeicherte Größe zu ändern. **Mac Option als Meta** leitet die macOS-Option-Taste im integrierten Terminal als Meta weiter, sodass Werkzeuge wie emacs, tmux und ähnliche Alt-präfigierte Tastenkürzel sehen (nur macOS); die Einstellung ist standardmäßig aktiviert, sodass Option+Pfeil wortweise springt, statt Zeichen mit Akzent einzufügen. Die **Shell-Integration** ist unter macOS und Linux verfügbar (unter Windows ausgeblendet). Die **Zwischenablage aus der Ferne** ist nur schreibend (Lesezugriffe werden immer verweigert) und wird unten beschrieben. **Scrollback-Puffer** legt fest, wie viele Ausgabezeilen jede Sitzung in ihrem Scrollverlauf behält — höhere Werte benötigen mehr Speicher. Der **Screenreader-Modus** macht die Terminalausgabe für assistive Technologien wie VoiceOver zugänglich; er ist aus Leistungsgründen standardmäßig deaktiviert. **Terminal-Glocke** bestimmt, wie eine Glocke (BEL) signalisiert wird — als visuelle Markierung für Hintergrundaktivität auf dem Sitzungs-Tab, als leiser hörbarer Piepton (der zusätzlich den Tab einer Hintergrundsitzung markiert, damit Sie ihn finden) oder gar nicht. **Mindestkontrast** hebt blassen Terminaltext auf ein lesbares Kontrastverhältnis zu seinem Hintergrund an; erhöhen Sie den Wert für bessere Barrierefreiheit oder stellen Sie ihn auf Aus, um die Anhebung abzuschalten.
 
 ::: tip Schriftfamilie des Terminals
 Das Terminal verwendet die **Monospace-Schrift** aus **Einstellungen → Editor**

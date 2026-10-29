@@ -66,9 +66,15 @@ Quando o terminal está em foco, `Mod + =` / `-` / `0` ajustam o zoom da fonte d
 
 A navegação entre prompts (`Mod + ↑` / `Mod + ↓`) requer a integração com o shell — veja [Integração com o shell](#integracao-com-o-shell) abaixo.
 
+**Linux:** `Ctrl` + uma letra vai para o shell, então teclas do readline como `Ctrl + A`, `Ctrl + E`, `Ctrl + K`, `Ctrl + F`, `Ctrl + U` e `Ctrl + W` funcionam como em qualquer terminal Linux. Os atalhos de letra do próprio terminal passam para `Ctrl + Shift`: `Ctrl + Shift + F` pesquisa, `Ctrl + Shift + K` limpa, `Ctrl + Shift + A` seleciona tudo, e `Ctrl + Shift + C` / `Ctrl + Shift + V` copiam e colam. `Ctrl + C` continua copiando uma seleção (sem seleção, envia SIGINT) e `Ctrl + V` continua colando; `Ctrl + Insert` / `Shift + Insert` também copiam e colam.
+
 ::: tip
 `Mod + C` sem uma seleção de texto envia SIGINT ao processo em execução — o mesmo que pressionar Ctrl+C em um terminal regular.
 :::
+
+## Ler o histórico enquanto digita
+
+Role para cima para ler a saída anterior e continue digitando: a visualização fica onde você está e um **prompt flutuante** aparece na parte de baixo do terminal com uma cópia ao vivo das linhas em que você digita — o prompt do shell ou a caixa de entrada de uma TUI como o Claude Code. As teclas continuam indo para o shell, então autocompletar com Tab, histórico e métodos de entrada funcionam normalmente. Clique na seta na extremidade direita para voltar ao prompt; ele some sozinho quando o prompt volta a ficar visível. Pressionar Enter ou Ctrl+C também volta para baixo, para você ver o que o comando — ou o prompt enviado a uma TUI — faz em seguida; qualquer outra tecla, inclusive Shift+Enter, deixa a visualização onde está. Programas em tela cheia (vim, less) não têm histórico, então ele nunca aparece neles.
 
 ## Pesquisa
 
@@ -151,6 +157,7 @@ O VMark define estas variáveis de ambiente em cada sessão do terminal:
 |----------|-------|
 | `TERM` | `xterm-256color` |
 | `TERM_PROGRAM` | `WezTerm` |
+| `TERM_PROGRAM_VERSION` | `20240203-110809-5046fc22` |
 | `VMARK_WORKSPACE` | Caminho raiz da área de trabalho (quando uma pasta está aberta) |
 | `PATH` | PATH completo do shell de login (igual ao seu terminal do sistema) |
 | `COLORTERM` | `truecolor` |
@@ -190,6 +197,22 @@ A menos que você escolha um shell nas configurações do terminal, o VMark inic
 Os atalhos padrão do shell como `Ctrl+R` (pesquisa de histórico reverso no zsh/bash) funcionam quando o terminal está em foco — eles não são interceptados pelo editor.
 
 Quando a raiz da área de trabalho muda enquanto o terminal já está em execução, as sessões ociosas fazem automaticamente `cd` para a nova raiz. Uma sessão ocupada com um comando (por exemplo, `vim` ou `less`) não é interrompida: ela muda de diretório quando o comando termina, o que requer a [integração com o shell](#integracao-com-o-shell) para ser detectado. Com a [barra de espaços de trabalho](/pt-BR/guide/workspace-rail) ativada, as sessões que pertencem a uma área de trabalho mantêm seu próprio diretório.
+
+## Ferramentas CLI de IA e o próprio acesso ao navegador
+
+Uma ferramenta CLI de IA como Claude Code ou Codex CLI é executada como um programa comum no terminal. O VMark oferece três coisas distintas a ela, e separá-las torna muito mais fácil diagnosticar uma configuração quebrada:
+
+| O quê | Quem fornece | O que permite à CLI |
+|---|---|---|
+| O terminal | VMark | Executar comandos com o seu shell de login e o seu `PATH`, como em qualquer janela de terminal |
+| VMark MCP | VMark, depois que você instalar a configuração dele em **Configurações → Integrações** | Ler e gravar o documento aberto no VMark por meio das próprias ferramentas MCP do VMark |
+| Ferramentas de navegador | O cliente de IA, não o VMark | Acessar um navegador pela integração própria do cliente, como uma extensão do Chrome ou um servidor de automação de navegador |
+
+O VMark não configura, não intermedeia nem garante as ferramentas de navegador. Uma conexão de navegador é verificada lendo o título real de uma página na sessão: um código de saída zero e um nome de ferramenta no catálogo não provam nenhum dos dois. Instalação da extensão, conectividade do aplicativo de desktop, descoberta de ferramentas e acesso efetivo à página são quatro verificações separadas.
+
+Os limites de reinicialização importam. Um processo CLI recém-iniciado pode continuar conversando com um servidor de aplicativo compartilhado em segundo plano iniciado antes, então as versões do cliente e do servidor podem diferir; anote as duas ao solucionar problemas. O terminal do VMark não reinicia nem isola esses processos para você.
+
+Não habilite a depuração remota, não copie substituições de confiança nem afrouxe as verificações da ponte nativa para fazer uma conexão de navegador funcionar. Isso amplia o modelo de permissões para todas as páginas que o navegador alcança, e um resultado obtido assim não é uma receita de configuração.
 
 ## Microfone, câmera e Apple Events no macOS
 
@@ -251,7 +274,7 @@ Cada terminal acompanha exatamente a sua sessão, em vez da transcrição modifi
 | Campainha do terminal | Desligada / Visual / Sonora | Visual |
 | Contraste mínimo | Desligado / WCAG AA (4,5:1) / WCAG AAA (7:1) / Máximo | WCAG AA (4,5:1) |
 
-A maioria das alterações se aplica imediatamente a todas as sessões abertas — tamanho e posição do painel, tamanho da fonte, altura da linha, cursor, Copiar ao selecionar, Option como tecla Meta, Histórico de rolagem, Modo leitor de tela, Campainha do terminal e Contraste mínimo. **Shell**, o **Renderizador WebGL**, a **Área de transferência remota** e a **Integração com o shell** são definidos quando uma sessão começa, então valem para as sessões abertas depois da alteração. **Tamanho do painel** vai até 80 % do espaço disponível. O editor mantém um tamanho mínimo em pixels, então ele nunca desaparece por completo, por maior que o terminal fique. Clique duas vezes na alça de redimensionamento para ir direto ao máximo e voltar, sem alterar o tamanho salvo. **Option como tecla Meta** roteia a tecla Option do macOS como Meta no terminal integrado para que emacs, tmux e ferramentas similares enxerguem atalhos prefixados com Alt (somente macOS); vem ativada por padrão, então Option+Seta move por palavras em vez de inserir caracteres acentuados. **Integração com o shell** está disponível no macOS e no Linux (oculta no Windows). **Área de transferência remota** é somente de escrita (leituras são sempre recusadas) e está descrita abaixo. **Histórico de rolagem** controla quantas linhas de saída cada sessão mantém no histórico de rolagem — valores maiores usam mais memória. **Modo leitor de tela** expõe a saída do terminal a tecnologias assistivas como o VoiceOver; vem desativado por padrão por questões de desempenho. **Campainha do terminal** escolhe como uma campainha (BEL) é sinalizada — uma marca visual de atividade em segundo plano na aba da sessão, um bipe sonoro suave (que também marca a aba de uma sessão em segundo plano para que você a encontre) ou nada. **Contraste mínimo** eleva texto tênue do terminal a uma razão de contraste legível em relação ao fundo; aumente-o para acessibilidade ou escolha Desligado para desativar a elevação.
+A maioria das alterações se aplica imediatamente a todas as sessões abertas — tamanho e posição do painel, tamanho da fonte, altura da linha, cursor, Copiar ao selecionar, Option como tecla Meta, Histórico de rolagem, Modo leitor de tela, Campainha do terminal e Contraste mínimo. **Shell**, o **Renderizador WebGL** (indisponível no Linux), a **Área de transferência remota** e a **Integração com o shell** são definidos quando uma sessão começa, então valem para as sessões abertas depois da alteração. **Tamanho do painel** vai até 80 % do espaço disponível. O editor mantém um tamanho mínimo em pixels, então ele nunca desaparece por completo, por maior que o terminal fique. Clique duas vezes na alça de redimensionamento para ir direto ao máximo e voltar, sem alterar o tamanho salvo. **Option como tecla Meta** roteia a tecla Option do macOS como Meta no terminal integrado para que emacs, tmux e ferramentas similares enxerguem atalhos prefixados com Alt (somente macOS); vem ativada por padrão, então Option+Seta move por palavras em vez de inserir caracteres acentuados. **Integração com o shell** está disponível no macOS e no Linux (oculta no Windows). **Área de transferência remota** é somente de escrita (leituras são sempre recusadas) e está descrita abaixo. **Histórico de rolagem** controla quantas linhas de saída cada sessão mantém no histórico de rolagem — valores maiores usam mais memória. **Modo leitor de tela** expõe a saída do terminal a tecnologias assistivas como o VoiceOver; vem desativado por padrão por questões de desempenho. **Campainha do terminal** escolhe como uma campainha (BEL) é sinalizada — uma marca visual de atividade em segundo plano na aba da sessão, um bipe sonoro suave (que também marca a aba de uma sessão em segundo plano para que você a encontre) ou nada. **Contraste mínimo** eleva texto tênue do terminal a uma razão de contraste legível em relação ao fundo; aumente-o para acessibilidade ou escolha Desligado para desativar a elevação.
 
 ::: tip Família de fonte do terminal
 O terminal usa a **Fonte mono** de **Configurações → Editor**, e não uma

@@ -23,6 +23,12 @@ describe("drawBoldTextInBrightColors threading (WI-UI1.4/D10)", () => {
   });
 });
 
+describe("scrollOnUserInput", () => {
+  it("is off, so typing while reading scrollback keeps the viewport (floating prompt)", () => {
+    expect(buildTerminalOptions({ ...base, themeId: "paper" }, "mono").scrollOnUserInput).toBe(false);
+  });
+});
+
 describe("clamps (pre-existing rules, pinned here since the file gained a test)", () => {
   it("scrollback: finite, truncated, bounded", () => {
     expect(clampScrollback(Number.NaN)).toBe(5000);
@@ -39,7 +45,7 @@ describe("clamps (pre-existing rules, pinned here since the file gained a test)"
 
 describe("shouldUseWebglRenderer", () => {
   // WebKitGTK presents a WebGL canvas frame only on the next unrelated repaint,
-  // so a keystroke's echo stayed invisible until the following key.
+  // so a keystroke's echo stayed invisible until the following key (#1511).
   it("never loads the WebGL renderer on Linux, even when the setting is on", () => {
     expect(shouldUseWebglRenderer(true, "linux")).toBe(false);
     expect(shouldUseWebglRenderer(false, "linux")).toBe(false);

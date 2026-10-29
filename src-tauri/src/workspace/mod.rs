@@ -9,8 +9,8 @@
 //! Key decisions:
 //!   - Root paths are hashed (SHA-256, first 16 bytes) into deterministic filenames.
 //!     Releases <= 0.7.22 used 8 bytes; those files are renamed forward on first read.
-//!   - Legacy migration is one-shot: after writing to the new location, the old `.vmark/`
-//!     directory is cleaned up (best-effort).
+//!   - Legacy migration is one-shot and read-only: the new app-data config is
+//!     written, and the repository's `.vmark/` tree is left exactly as found.
 //!   - Writes use atomic_write_file to prevent partial reads by concurrent processes.
 //!   - Both commands are `async` and do their disk work on the blocking pool,
 //!     one at a time under `ConfigIoLock` (see there for the migration race the
@@ -34,9 +34,9 @@ pub(crate) mod grants;
 mod legacy;
 pub(crate) mod transfer;
 pub(crate) mod validation;
+use legacy::{fallback_after_rename, migrate_from_legacy};
 #[cfg(test)]
-use legacy::{clean_excludes, try_rename_legacy_hash, HashMigrationOutcome};
-use legacy::{cleanup_old_vmark, fallback_after_rename, migrate_from_legacy};
+use legacy::{try_rename_legacy_hash, HashMigrationOutcome};
 
 /// Workspace identity and trust information for permission management.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,13 +248,11 @@ fn read_config_in(paths: &ConfigPaths, root_path: &str) -> Result<Option<Workspa
     let content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {e}"))?;
 
-    // Only drop the old `.vmark/` once the new file is durably written; if it is
-    // not, say so — silence here means the migration re-runs every launch unseen.
-    match app_paths::atomic_write_file(&paths.ws_path, content.as_bytes()) {
-        Ok(()) => cleanup_old_vmark(root_path),
-        Err(e) => log::warn!(
-            "[workspace] migrated config not persisted ({e}); keeping legacy .vmark for retry"
-        ),
+    // The legacy `.vmark/` tree belongs to the repository (often to git) and is
+    // never deleted or rewritten. Once this write lands, the app-data config is
+    // the source of truth and the next read short-circuits before migration.
+    if let Err(e) = app_paths::atomic_write_file(&paths.ws_path, content.as_bytes()) {
+        log::warn!("[workspace] migrated config not persisted ({e}); migration will re-run");
     }
     Ok(Some(config))
 }

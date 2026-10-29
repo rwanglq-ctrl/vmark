@@ -52,7 +52,12 @@ while the section is missing.
    bump PR costs a full CI cycle. Standalone is the fallback when `main` already
    has the changes.
 2. `main` requires a PR (rule 60 §10): push a branch, `gh pr create --fill`,
-   `gh pr checks --watch`, merge, then `git checkout main && git pull`.
+   `gh pr checks --watch`, `gh pr merge --merge`, then
+   `git checkout main && git pull`. **Merge the PR that carries the bump with
+   `--merge`, even a feature PR that would normally be squashed.** The tag gate
+   vouches for a commit through an ancestor with the same tree, which a merge
+   commit's PR-head parent is; a squash or rebase commit has none, so its tag
+   is refused.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`. **Never `git push --tags`** — a
    stale tag triggers a second release that can become "Latest".
 4. The pre-push tag leg (`scripts/check-tag-green.sh`) passes immediately after

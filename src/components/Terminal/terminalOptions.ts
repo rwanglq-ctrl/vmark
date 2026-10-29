@@ -68,7 +68,8 @@ export function clampContrastRatio(value: number): number {
 /**
  * Whether to load xterm's WebGL renderer. Never on Linux: WebKitGTK presents a
  * WebGL canvas frame only on the next unrelated repaint, so a keystroke's echo
- * stayed invisible until the following key. The DOM renderer paints at once.
+ * stayed invisible until the following key (#1511). The DOM renderer paints at
+ * once.
  */
 export function shouldUseWebglRenderer(
   useWebGL: boolean,
@@ -111,5 +112,9 @@ export function buildTerminalOptions(
     // audit). NaN is checked FIRST — it passes straight through Math.min/max,
     // and xterm throws on a NaN scrollback, taking terminal creation with it.
     scrollback: clampScrollback(settings.scrollback),
+    // Typing while scrolled back must not yank the viewport to the bottom —
+    // the floating prompt (setupFloatingPrompt.ts) shows the input instead,
+    // and its button jumps back down.
+    scrollOnUserInput: false,
   };
 }

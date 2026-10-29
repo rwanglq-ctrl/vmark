@@ -6,12 +6,13 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, render, act } from "@testing-library/react";
-import { StrictMode, useEffect } from "react";
+import { StrictMode, useEffect, useRef } from "react";
 
 const mockWindowContextError = vi.fn();
 vi.mock("@/utils/debug", () => ({ windowContextError: (...a: unknown[]) => mockWindowContextError(...a) }));
 
 import { READY_ATTRIBUTE, useWindowReady } from "./useWindowReady";
+import { isWindowListening, resetWindowListeningForTest } from "./windowListening";
 import {
   signalMenuCommandsMounted,
   resetMenuCommandsForTest,
@@ -21,6 +22,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   mockWindowContextError.mockReset();
   resetMenuCommandsForTest();
+  resetWindowListeningForTest();
   document.documentElement.removeAttribute(READY_ATTRIBUTE);
 });
 afterEach(() => {
@@ -310,5 +312,88 @@ describe("StrictMode double-mount (tier-0 CI run 33367721596)", () => {
 
     expect(readyAttr()).toBeNull();
     expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+// WI-OC1.3 — the document surface mounts only once the window announces
+// itself. Building a large document's view is seconds of main-thread work on a
+// slow machine; started before the announcement, it starved the very listeners
+// the announcement waits on (#1565).
+describe("the window-listening signal the document surface waits on", () => {
+  it("is held from a document window's markReady until it announces", async () => {
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useWindowReady());
+
+    act(() => result.current.markReady({ label: "main", emit }));
+    expect(isWindowListening()).toBe(false);
+
+    await mountMenuListener();
+    expect(readyAttr()).toBe("true");
+    expect(isWindowListening()).toBe(true);
+  });
+
+  it("opens after a budget that expires too — the announcement still goes out", async () => {
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useWindowReady());
+
+    act(() => result.current.markReady({ label: "main", emit }));
+    await settle(5_000);
+
+    expect(emit).toHaveBeenCalledWith("ready", "main");
+    expect(isWindowListening()).toBe(true);
+  });
+
+  it("is never held for a window with no document surface", () => {
+    const emit = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useWindowReady());
+
+    act(() => result.current.markReady({ label: "settings", emit }));
+    expect(isWindowListening()).toBe(true);
+  });
+});
+
+// The provider's init is once-only (its own StrictMode guard), so markReady
+// runs ONCE, in the first lifecycle. The harness above calls it again from the
+// replayed effect and so never saw this: the simulated unmount cleared a
+// non-document window's announcement timer, and nothing ever started it again.
+describe("StrictMode replay with a once-only markReady, as the provider calls it", () => {
+  function OnceHarness({ label, emit }: { label: string; emit: (e: string, p?: unknown) => unknown }) {
+    const { isReady, markReady } = useWindowReady();
+    const started = useRef(false);
+    useEffect(() => {
+      if (started.current) return;
+      started.current = true;
+      markReady({ label, emit });
+    }, [markReady, label, emit]);
+    return isReady ? <div data-testid="shell" /> : null;
+  }
+
+  it("still announces a settings window whose timer the simulated unmount cleared", async () => {
+    const emit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StrictMode>
+        <OnceHarness label="settings" emit={emit} />
+      </StrictMode>,
+    );
+
+    await settle(200);
+
+    expect(readyAttr()).toBe("true");
+    expect(emit).toHaveBeenCalledExactlyOnceWith("ready", "settings");
+  });
+
+  it("still announces a document window, once", async () => {
+    const emit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StrictMode>
+        <OnceHarness label="main" emit={emit} />
+      </StrictMode>,
+    );
+
+    await mountMenuListener();
+
+    expect(readyAttr()).toBe("true");
+    expect(emit).toHaveBeenCalledExactlyOnceWith("ready", "main");
+    expect(isWindowListening()).toBe(true);
   });
 });

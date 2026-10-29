@@ -59,9 +59,11 @@ basculer le mode Source ou la vue divisée, ou voir le fichier rechargé depuis 
 ramènent tous là où vous lisiez — et non en haut.
 
 Chaque surface mémorise sa propre position : le texte enrichi et la source conservent donc des
-positions distinctes dans le même fichier. Si vous avez placé un curseur dans le document, le curseur
-l'emporte toujours : en revenant, vous arrivez au point d'insertion, ce qui permet aussi de garder le
-même paragraphe à l'écran lorsque vous passez du texte enrichi à la source.
+positions distinctes dans le même fichier. Revenir à la même surface — en changeant d'onglet ou
+lorsque le fichier est rechargé — vous ramène là où vous aviez fait défiler la vue, même si le
+curseur se trouve ailleurs ; le curseur reste là où vous l'avez laissé. Passer du texte enrichi à
+la source suit en revanche le curseur, s'il y en a un, car c'est lui qui garde le même paragraphe
+à l'écran d'une surface à l'autre.
 
 Les positions sont propres à chaque document et à chaque session — fermer un onglet l'oublie.
 
@@ -71,7 +73,7 @@ L'annulation et le rétablissement franchissent la frontière WYSIWYG ⇄ Source
 
 ### Fichiers volumineux
 
-VMark ouvre automatiquement les fichiers de plus de 1 Mo en mode Source pour une ouverture en moins d'une seconde, avertit avant de toucher aux fichiers de plus de 5 Mo et refuse les fichiers de plus de 50 Mo. Voir le guide [Fichiers volumineux](./large-files.md) pour les seuils et les paramètres.
+VMark ouvre automatiquement les fichiers volumineux en mode Source pour une ouverture en moins d'une seconde — fichiers de plus de 1 Mo ou markdown très dense en blocs avec 1 200+ blocs estimés —, avertit avant de toucher aux fichiers de plus de 5 Mo et refuse les fichiers de plus de 50 Mo. Voir le guide [Fichiers volumineux](./large-files.md) pour les seuils et les paramètres.
 
 ### Aperçu source
 
@@ -487,7 +489,8 @@ La barre d'état court le long du bas de la fenêtre (`F7` la masque). Le côté
 | Lint | ⊗ erreurs ou ⚠ avertissements trouvés par la dernière exécution du [lint](#lint-markdown) ; masqué lorsqu'il n'y en a aucun | Va au problème suivant |
 | IA | Pendant l'exécution d'un génie, *Réflexion…* avec les secondes écoulées et un × pour annuler ; puis *Terminé*, ou l'erreur avec **Réessayer**, qui relance la requête en échec, et **Ignorer** ; Réessayer est absent quand il n'y a rien à relancer, par exemple sans fournisseur | — |
 | MCP | Une icône satellite, teintée lorsqu'un client IA est connecté ; le mot *off*, *…* ou *error* lorsqu'il ne fonctionne pas normalement. L'infobulle nomme les clients connectés | Ouvre **Paramètres → Intégrations** |
-| Historique MCP | Les écritures de l'IA dans cet onglet, de la plus récente à la plus ancienne, chacune avec **Restaurer l'état d'avant cette écriture** ; un bouton corbeille efface l'historique de l'onglet sans demander | Ouvre la liste |
+| Écouteur MCP | Un avertissement, *MCP indisponible dans cette fenêtre*, quand l'écouteur de requêtes de cette fenêtre n'a pas pu démarrer malgré toutes les tentatives : les clients d'IA ne peuvent pas joindre cette fenêtre, même si le serveur MCP fonctionne. Redémarrez VMark pour réessayer | — |
+| Historique MCP | Une icône d'historique avec le nombre de versions IA du document actif, en couleur d'avertissement quand ses modifications ne sont pas enregistrées ; le panneau indique qui a fait chaque version, avec **Restaurer cette version** et **Restaurer l’état d’avant cette modification**, ainsi que [Points de contrôle antérieurs](/fr/guide/mcp-setup#points-de-controle-d-edition) | Ouvre le panneau |
 | Terminal | — | Affiche ou masque le terminal |
 | Mode | Le mode actuel — Source ou WYSIWYG (masqué pour les fichiers de workflow GitHub Actions) | Change de mode |
 | Verrou | Si le document est en lecture seule | Active ou désactive la lecture seule |

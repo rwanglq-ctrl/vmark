@@ -4,22 +4,34 @@ O VMark abre a maioria dos arquivos markdown instantaneamente, mas arquivos muit
 
 ## O que conta como "grande"
 
-O VMark classifica um arquivo pelo tamanho antes de abri-lo:
+O VMark classifica um arquivo pelo tamanho e, para markdown, por uma contagem estimada de blocos antes de abri-lo:
 
-| Tamanho | Categoria | O que acontece |
+| Tamanho ou contagem de blocos | Categoria | O que acontece |
 |---------|-----------|----------------|
-| < 1 MB | Pequeno | Abre em modo WYSIWYG (rich-text) instantaneamente. |
-| 1 MB – 5 MB | Grande | Abre em **modo Fonte** por padrão — em menos de um segundo. A barra de status oferece "Mudar para WYSIWYG". |
+| < 1 MB e menos de 1.200 blocos estimados | Pequeno | Abre em modo WYSIWYG (rich-text) instantaneamente. |
+| 1 MB – 5 MB, ou 1.200+ blocos estimados | Grande | Abre em **modo Fonte** por padrão — em menos de um segundo. A barra de status oferece "Mudar para WYSIWYG". |
 | 5 MB – 50 MB | Enorme | Aparece primeiro um diálogo de confirmação. Abre apenas em modo Fonte. |
 | ≥ 50 MB | Recusado | O VMark se recusa a abrir o arquivo. Use `less`, `bat` ou ferramenta similar. |
 
-O tamanho é verificado pelo sistema operacional sem ler o arquivo, então a decisão é rápida e não pré-carrega dados.
+O tamanho é verificado pelo sistema operacional sem ler o arquivo. Quando um arquivo markdown tem menos de 1 MB, o VMark estima em seguida sua contagem de blocos com uma varredura linha a linha dos bytes — não uma análise de markdown —, então a decisão continua rápida e o documento nunca é carregado no webview.
 
 ## Por que modo Fonte para arquivos grandes
 
 O modo Fonte usa o CodeMirror com virtualização de viewport — apenas a porção visível do documento é renderizada. O modo WYSIWYG usa Tiptap/ProseMirror, que precisa construir um nó DOM para cada bloco do documento. Em um arquivo markdown de 1,4 MB / ~2.250 blocos isso leva cerca de 15 segundos na primeira abertura; o modo Fonte abre o mesmo arquivo em menos de um segundo.
 
-O parsing não é o gargalo — é a construção da view do ProseMirror. Mover o parse para fora da thread principal não melhoraria perceptivelmente a espera.
+O custo de construir a visualização acompanha a contagem de blocos, não o tamanho do arquivo. Três fixtures de tamanho quase idêntico (377–397 KB), diferindo apenas em como seus bytes são divididos em blocos, abriram em 3,6, 5,2 e 18 segundos com 601, 1.201 e 3.401 blocos. Um documento de 524 KB com 3.773 blocos curtos levou mais de 30 segundos naquela máquina — abaixo do limite de 1 MB, mas muito além do ponto em que a janela para de responder. É por isso que a estimativa de blocos pode encaminhar um arquivo para o modo Fonte sozinha.
+
+A maior parte desse tempo vai para construir e diagramar a view, não para o parsing. Em um documento CJK longo medido em uma máquina lenta, o parsing foi entre um quarto e dois quintos do custo de abertura do editor.
+
+## Enquanto um documento abre
+
+Uma janela responde aos menus, atalhos e ao botão de fechar antes de o VMark construir a view de texto rico do documento, que aparece logo em seguida. Antes, um documento longo era construído primeiro e, em uma máquina lenta, isso podia impedir a janela de ficar pronta: os menus respondiam com atraso e o log registrava *menu commands did not mount within 5000ms*.
+
+O que o WYSIWYG faz ao abrir também fica proporcional ao documento:
+
+- As imagens carregam quando se aproximam da área visível.
+- **Espaçamento entre Letras CJK** (**Configurações → Editor → Tipografia**) não faz nenhum trabalho enquanto está desligado, o padrão, e percorre o documento uma única vez quando está ligado.
+- Decorações como o destaque de código, o espaçamento CJK e as marcações de lint custam aproximadamente de forma linear com o tamanho do documento. Documentos muito longos custavam de forma quadrática.
 
 ## Indicadores na barra de status
 
@@ -31,7 +43,7 @@ O parsing não é o gargalo — é a construção da view do ProseMirror. Mover 
 
 Abra **Configurações → Editor → Arquivos grandes**:
 
-- **Abrir arquivos acima de 1 MB em modo Fonte automaticamente** *(ligado por padrão)* — desligue se preferir WYSIWYG para arquivos de até 5 MB, aceitando o tempo de abertura mais longo.
+- **Abrir arquivos grandes em modo Fonte automaticamente** *(ligado por padrão)* — inclui arquivos acima de 1 MB e markdown com muitos blocos. Desligue se preferir WYSIWYG para arquivos de até 5 MB, aceitando o tempo de abertura mais longo.
 - **Avisar antes de abrir arquivos acima de 5 MB** *(ligado por padrão)* — desligue para pular o diálogo de confirmação para arquivos entre 5 MB e 50 MB. Eles ainda abrirão em modo Fonte.
 
 A recusa fixa em 50 MB não é ajustável pelo usuário. A webview não consegue manter strings arbitrariamente grandes com segurança sem risco de falhas por falta de memória.
@@ -51,5 +63,5 @@ A recusa fixa em 50 MB não é ajustável pelo usuário. A webview não consegue
 
 ## Limitações conhecidas
 
-- Os limiares são tamanhos em bytes, que são uma aproximação para o custo real (contagem de blocos). Um arquivo de 600 KB com milhares de blocos curtos pode ser mais lento que um arquivo de 1,2 MB com parágrafos longos. Os padrões são conservadores.
-- O WYSIWYG ainda constrói todos os blocos do documento ao abrir — só as fórmulas matemáticas em linha são renderizadas depois, quando se aproximam da área visível — então mudar um arquivo grande para WYSIWYG custa todo o tempo de abertura descrito acima.
+- A contagem de blocos é uma estimativa, não uma análise: texto separado por linhas em branco, títulos, itens de lista, linhas de tabela e cada bloco de código delimitado contam como um bloco, enquanto o código dentro de uma cerca e as linhas de frontmatter são ignorados. Um documento com formato incomum pode ser encaminhado para o modo Fonte quando o WYSIWYG teria sido rápido o suficiente; **Mudar para WYSIWYG** é um clique. Arquivos que não são markdown nunca são encaminhados pela contagem de blocos.
+- O WYSIWYG ainda constrói todos os blocos do documento ao abrir — só as imagens e as fórmulas matemáticas em linha esperam até se aproximarem da área visível — então mudar um arquivo grande para WYSIWYG custa todo o tempo de abertura descrito acima.

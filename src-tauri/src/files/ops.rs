@@ -1,8 +1,9 @@
 //! # File Ops
 //!
 //! Purpose: Lightweight per-file commands. `get_file_size_bytes` is the
-//! size-check step of the large-file open flow; `move_paths_to_trash` moves
-//! orphaned files to the system trash instead of unlinking them.
+//! byte-check step of the large-file open flow (its block-count twin lives in
+//! `block_count.rs`); `move_paths_to_trash` moves orphaned files to the system
+//! trash instead of unlinking them.
 //!
 //! Pipeline: Frontend invoke("get_file_size_bytes") → fs::metadata → len in bytes.
 //!
@@ -28,7 +29,7 @@ use crate::command_error::CommandError;
 /// restrict by extension here — the open dialog allows `.md`, `.markdown`,
 /// `.mdown`, `.mkd`, and `.txt`, and constraining extension at the backend
 /// broke non-markdown opens during the audit pass.
-fn validate_openable_path(raw: &str) -> Result<(), CommandError> {
+pub(crate) fn validate_openable_path(raw: &str) -> Result<(), CommandError> {
     let canonical = Path::new(raw)
         .canonicalize()
         .map_err(|e| CommandError::from_io(&e, format!("invalid path '{raw}': {e}")))?;

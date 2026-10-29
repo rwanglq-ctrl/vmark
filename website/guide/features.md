@@ -59,9 +59,11 @@ toggling Source mode or Split View, or having the file reloaded from disk all
 return you to where you were reading — not to the top.
 
 Each surface remembers its own position, so Rich Text and Source keep separate
-places in the same file. If you have put a cursor in the document, the cursor
-still wins: coming back lands you at the caret, which is also what keeps the
-same paragraph in view when you switch between Rich Text and Source.
+places in the same file. Coming back to the same surface — switching tabs, or
+the file reloading — returns you to where you had scrolled, even if your cursor
+is somewhere else; the cursor stays where you left it. Switching between Rich
+Text and Source follows the cursor instead, when there is one, because that is
+what keeps the same paragraph in view across the two.
 
 Positions are per document and per session — closing a tab forgets it.
 
@@ -71,7 +73,7 @@ Undo and redo cross the WYSIWYG ⇄ Source boundary. Every mode switch records a
 
 ### Large Files
 
-VMark auto-opens files over 1 MB in Source mode for a sub-second open, warns before touching files above 5 MB, and refuses files over 50 MB. See the [Large Files](./large-files.md) guide for thresholds and settings.
+VMark auto-opens large files in Source mode for a sub-second open — files over 1 MB, or block-dense markdown with 1,200+ estimated blocks — warns before touching files above 5 MB, and refuses files over 50 MB. See the [Large Files](./large-files.md) guide for thresholds and settings.
 
 ### Source Peek
 
@@ -487,7 +489,8 @@ The status bar runs along the bottom of the window (`F7` hides it). The left sid
 | Lint | ⊗ errors or ⚠ warnings found by the last [lint](#markdown-lint) run; hidden when there are none | Jumps to the next issue |
 | AI | While a genie runs, *Thinking…* with the elapsed seconds and a × to cancel; then *Done*, or the error with **Retry**, which runs the failed request again, and **Dismiss**; Retry is absent when the failure has nothing to re-run, such as a missing provider | — |
 | MCP | A satellite icon, tinted when an AI client is connected; the word *off*, *…* or *error* when it is not running normally. The tooltip names the connected clients | Opens **Settings → Integrations** |
-| MCP history | The AI writes to this tab, newest first, each with **Restore to before this write**; a trash button clears the tab's history without asking | Opens the list |
+| MCP listener | A warning, *MCP unavailable in this window*, when this window's request listener could not start after every retry: AI clients cannot reach this window, even while the MCP server runs. Restart VMark to try again | — |
+| MCP history | A history icon with the number of AI versions of the focused document, in a warning colour when its changes are not being recorded; the panel lists who made each version, with **Restore this version** and **Restore to before this change**, plus [Earlier checkpoints](/guide/mcp-setup#edit-checkpoints) | Opens the panel |
 | Terminal | — | Shows or hides the terminal |
 | Mode | The current mode — Source or WYSIWYG (hidden for GitHub Actions workflow files) | Switches mode |
 | Lock | Whether the document is read-only | Toggles read-only |
