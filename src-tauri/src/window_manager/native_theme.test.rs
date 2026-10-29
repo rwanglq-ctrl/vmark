@@ -125,8 +125,20 @@ fn hex_color_covers_the_extremes() {
 #[test]
 fn hex_color_refuses_every_other_shape() {
     for bad in [
-        "", "#", "112233", "#12345", "#1234567", "#11223344", "#GG0000", "# 11223",
-        "#11223 ", "rgba(0,0,0,1)", "white", "#１２３４５６", "#+12345", "#-12345",
+        "",
+        "#",
+        "112233",
+        "#12345",
+        "#1234567",
+        "#11223344",
+        "#GG0000",
+        "# 11223",
+        "#11223 ",
+        "rgba(0,0,0,1)",
+        "transparent",
+        "#１２３４５６",
+        "#+12345",
+        "#-12345",
     ] {
         assert_eq!(parse_hex_colorref(bad), None, "{bad:?} must be refused");
     }

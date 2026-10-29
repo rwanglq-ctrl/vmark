@@ -188,9 +188,11 @@ fn apply_to_all_windows(app: &AppHandle, colors: ChromeColors) {
             }
             #[cfg(target_os = "windows")]
             if tint {
-                if let Err(e) = window.hwnd().map_err(|e| e.to_string()).and_then(|hwnd| {
-                    dwm::apply_colors(hwnd, colors).map_err(|e| e.to_string())
-                }) {
+                if let Err(e) = window
+                    .hwnd()
+                    .map_err(|e| e.to_string())
+                    .and_then(|hwnd| dwm::apply_colors(hwnd, colors).map_err(|e| e.to_string()))
+                {
                     log::warn!("[native_theme] could not color window {label:?}: {e}");
                 }
             }
