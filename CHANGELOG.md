@@ -11,6 +11,15 @@ section as part of the version bump (`.claude/rules/40-version-bump.md`).
 
 ## [Unreleased]
 
+## [0.9.107] - 2026-10-29
+
+### Added
+
+- **Every theme on Windows 11.** Settings → Appearance now offers the full
+  theme catalog on Windows 11, and the window's title bar, title text and
+  border take the theme's colours. Windows 10 and Linux still offer White and
+  Night (#1606).
+
 ### Fixed
 
 - **Press-and-hold accents work in the terminal on macOS.** Holding a letter
@@ -462,7 +471,8 @@ section as part of the version bump (`.claude/rules/40-version-bump.md`).
 
 - Raised the `markdown-it` version floor past GHSA-253c-mchw-3w2r.
 
-[Unreleased]: https://github.com/xiaolai/vmark/compare/v0.9.106...HEAD
+[Unreleased]: https://github.com/xiaolai/vmark/compare/v0.9.107...HEAD
+[0.9.107]: https://github.com/xiaolai/vmark/releases/tag/v0.9.107
 [0.9.106]: https://github.com/xiaolai/vmark/releases/tag/v0.9.106
 [0.9.105]: https://github.com/xiaolai/vmark/releases/tag/v0.9.105
 [0.9.104]: https://github.com/xiaolai/vmark/releases/tag/v0.9.104
