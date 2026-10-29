@@ -23,8 +23,8 @@ Wählen Sie eines von sechs Farbdesigns. Das aktive Design wird durch einen Ring
 | Nacht | `#23262B` | Dunkles Schiefergrau für wenig Licht |
 | Solarized | `#002B36` | Solarized Dark, die klassische Palette |
 
-::: info Windows und Linux bieten nur Weiß und Nacht
-Unter Windows und Linux zeichnet das System die Titelleiste (und unter Windows auch die Menüleiste), und diese kann nur hell oder dunkel sein. Diese Plattformen bieten daher nur **Weiß** und **Nacht** an, und ein Design, das nicht zum System-Fensterrahmen passen kann, wird als das nächstliegende der beiden angezeigt: Papier, Mint und Sepia erscheinen als Weiß, Solarized als Nacht. Ihre gespeicherte Auswahl wird dabei nicht geändert — unter macOS steht der vollständige Katalog zur Verfügung.
+::: info Windows 10 und Linux bieten nur Weiß und Nacht
+Unter Windows 10 und Linux zeichnet das System die Titelleiste, und diese kann nur hell oder dunkel sein. Diese Plattformen bieten daher nur **Weiß** und **Nacht** an, und ein Design, das nicht zum System-Fensterrahmen passen kann, wird als das nächstliegende der beiden angezeigt: Papier, Mint und Sepia erscheinen als Weiß, Solarized als Nacht. Ihre gespeicherte Auswahl wird dabei nicht geändert — unter macOS und Windows 11 steht der vollständige Katalog zur Verfügung. Unter Windows 11 übernimmt die Titelleiste die Farben des Designs; die Menüleiste wird weiterhin hell oder dunkel gezeichnet.
 :::
 
 #### Systemdarstellung folgen

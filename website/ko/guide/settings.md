@@ -23,8 +23,8 @@ VMark의 설정 패널에서 에디터의 모든 측면을 사용자 정의할 �
 | Night | `#23262B` | 어두운 곳을 위한 짙은 슬레이트 |
 | Solarized | `#002B36` | Solarized Dark, 고전적인 팔레트 |
 
-::: info Windows와 Linux에서는 White와 Night만 제공됩니다
-Windows와 Linux에서는 시스템이 제목 표시줄(Windows에서는 메뉴 바도)을 그리며, 이는 밝거나 어두운 두 가지만 가능합니다. 그래서 이 플랫폼에서는 **White**와 **Night**만 제공되며, 시스템 크롬과 맞출 수 없는 테마는 둘 중 가까운 쪽으로 표시됩니다: Paper, Mint, Sepia는 White로, Solarized는 Night로 표시됩니다. 저장된 선택은 바뀌지 않으며 — macOS에서는 전체 카탈로그를 사용할 수 있습니다.
+::: info Windows 10과 Linux에서는 White와 Night만 제공됩니다
+Windows 10과 Linux에서는 시스템이 제목 표시줄을 그리며, 이는 밝거나 어두운 두 가지만 가능합니다. 그래서 이 플랫폼에서는 **White**와 **Night**만 제공되며, 시스템 크롬과 맞출 수 없는 테마는 둘 중 가까운 쪽으로 표시됩니다: Paper, Mint, Sepia는 White로, Solarized는 Night로 표시됩니다. 저장된 선택은 바뀌지 않으며 — macOS와 Windows 11에서는 전체 카탈로그를 사용할 수 있습니다. Windows 11에서는 제목 표시줄이 테마 고유의 색을 따르고, 메뉴 바는 계속 밝거나 어둡게 그려집니다.
 :::
 
 #### 시스템 화면 모드 따르기

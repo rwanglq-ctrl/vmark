@@ -23,8 +23,8 @@ VMark 的设置面板让你可以自定义编辑器的方方面面。使用 `Mod
 | Night | `#23262B` | 深石板色，适合弱光环境 |
 | Solarized | `#002B36` | Solarized Dark，经典配色 |
 
-::: info Windows 和 Linux 仅提供 White 与 Night
-在 Windows 和 Linux 上，标题栏（在 Windows 上还有菜单栏）由系统绘制，而系统只能呈现浅色或深色。因此这两个平台只提供 **White** 和 **Night**，无法与系统窗口边框匹配的主题会显示为二者中较接近的一个：Paper、Mint 和 Sepia 显示为 White，Solarized 显示为 Night。你保存的选择不会被更改——在 macOS 上可以使用全部主题。
+::: info Windows 10 和 Linux 仅提供 White 与 Night
+在 Windows 10 和 Linux 上，标题栏由系统绘制，而系统只能呈现浅色或深色。因此这两个平台只提供 **White** 和 **Night**，无法与系统窗口边框匹配的主题会显示为二者中较接近的一个：Paper、Mint 和 Sepia 显示为 White，Solarized 显示为 Night。你保存的选择不会被更改——在 macOS 和 Windows 11 上可以使用全部主题。在 Windows 11 上，标题栏会采用主题本身的颜色；菜单栏仍以浅色或深色绘制。
 :::
 
 #### 跟随系统外观

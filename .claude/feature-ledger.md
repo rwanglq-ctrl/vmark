@@ -4389,15 +4389,15 @@ The Settings window is its own route (`src/pages/Settings.tsx`, panes under `src
 ### Theme catalog
 - id: theme-catalog
 - feature: Themes, fonts & layout
-- summary: Six built-in themes — White, Paper, Mint, Sepia (light) and Night, Solarized (dark) — defined as typed `ThemeTokens` and written to the page as CSS custom properties at runtime. Windows and Linux offer only White and Night.
-- capabilities: `themes` barrel is the single source of `ThemeId`; per-theme `isDark` drives the `.dark-theme`/`.dark` root classes; `applyTheme` flattens tokens to `--*` CSS vars, memoized per theme object, with the `terminal` subtree left out (xterm reads it from JS); 16-role syntax palette emitted as `--syntax-*`; xterm theme built per theme (`buildXtermTheme`); neutral White/Night terminal theme while a browser tab is focused (`terminalThemeForBrowser`); legacy `--bg-color`-style variables derived from the catalog (`legacyModeColors`); off macOS the picker lists only `white` + `night`, and a stored theme is mapped to the one of the same polarity (Sepia becomes White, not Night)
+- summary: Six built-in themes — White, Paper, Mint, Sepia (light) and Night, Solarized (dark) — defined as typed `ThemeTokens` and written to the page as CSS custom properties at runtime. macOS and Windows 11 offer all six; Windows 10 and Linux offer only White and Night.
+- capabilities: `themes` barrel is the single source of `ThemeId`; per-theme `isDark` drives the `.dark-theme`/`.dark` root classes; `applyTheme` flattens tokens to `--*` CSS vars, memoized per theme object, with the `terminal` subtree left out (xterm reads it from JS); 16-role syntax palette emitted as `--syntax-*`; xterm theme built per theme (`buildXtermTheme`); neutral White/Night terminal theme while a browser tab is focused (`terminalThemeForBrowser`); legacy `--bg-color`-style variables derived from the catalog (`legacyModeColors`); the full catalog is offered on macOS and on Windows 11, which reports a themable caption through `native_theme_capabilities` before App mounts (`nativeThemeCapability`); on Windows 10 and Linux the picker lists only `white` + `night`, and a stored theme is mapped to the one of the same polarity (Sepia becomes White, not Night)
 - status: shipped-on, windows-linux-gap
-- gate: always on; `selectableThemeIds(isMac)` / `coerceThemeId` narrow the set off macOS; `appearance.theme = "paper"`
+- gate: always on; `selectableThemeIds(fullCatalog)` / `coerceThemeId` narrow the set on Windows 10 and Linux (`offersFullThemeCatalog()`); `appearance.theme = "paper"`
 - surfaces: settings pane `appearance` swatches; automatic at startup
-- code: `src/theme/themes/index.ts`, `src/theme/themeAvailability.ts`, `src/theme/applyTheme.ts`, `src/theme/tokens.ts`, `src/theme/palettes.ts`, `src/theme/legacyModeColors.ts`, `src/theme/buildXtermTheme.ts`, `src/theme/terminalThemeForBrowser.ts`, `src/hooks/useTheme.ts`
-- rust: none
-- docs: `website/guide/settings.md` §"Theme" (with the "Windows and Linux offer White and Night only" callout)
-- tests: `src/theme/applyTheme.test.ts`, `src/theme/cssVars.test.ts`, `src/theme/emittedCssVars.regression.test.ts`, `src/theme/buildXtermTheme.test.ts`, `src/theme/buildXtermTheme.regression.test.ts`, `src/theme/themeAvailability.test.ts`, `src/theme/terminalThemeForBrowser.test.ts`, `src/theme/legacyModeColors.test.ts`, `src/theme/syntaxStaticFallback.test.ts`, `src/theme/themes/__acceptance__/contrast.test.ts`, `src/hooks/useTheme.test.ts`
+- code: `src/theme/themes/index.ts`, `src/theme/themeAvailability.ts`, `src/theme/applyTheme.ts`, `src/theme/tokens.ts`, `src/theme/palettes.ts`, `src/theme/legacyModeColors.ts`, `src/theme/buildXtermTheme.ts`, `src/theme/terminalThemeForBrowser.ts`, `src/services/theme/nativeThemeCapability.ts`, `src/hooks/useTheme.ts`
+- rust: `native_theme_capabilities` (`src-tauri/src/window_manager/native_theme.rs`)
+- docs: `website/guide/settings.md` §"Theme" (with the "Windows 10 and Linux offer White and Night only" callout); `README.md` Highlights themes bullet
+- tests: `src/theme/applyTheme.test.ts`, `src/theme/cssVars.test.ts`, `src/theme/emittedCssVars.regression.test.ts`, `src/theme/buildXtermTheme.test.ts`, `src/theme/buildXtermTheme.regression.test.ts`, `src/theme/themeAvailability.test.ts`, `src/services/theme/nativeThemeCapability.test.ts`, `src/theme/terminalThemeForBrowser.test.ts`, `src/theme/legacyModeColors.test.ts`, `src/theme/syntaxStaticFallback.test.ts`, `src/theme/themes/__acceptance__/contrast.test.ts`, `src/hooks/useTheme.test.ts`
 - notes: `src/theme/themes/__acceptance__/highContrast.spike.ts` is an acceptance-test artifact and is not in the catalog. It cannot be selected.
 
 ### Follow-system light/dark
@@ -4417,16 +4417,16 @@ The Settings window is its own route (`src/pages/Settings.tsx`, panes under `src
 ### Native chrome theming
 - id: native-chrome-theme
 - feature: Themes, fonts & layout
-- summary: The resolved light/dark state is reported to Rust so that OS-drawn title bars (and the Windows menu bar) match the in-app theme on Windows and Linux.
-- capabilities: `syncNativeTheme(isDark)` sends only a real flip across IPC and records delivery only on success, so a failure is retried on the next change; failures are swallowed so the app's own theming never breaks; Rust remembers the preference so windows opened later start with the right chrome; macOS is a deliberate no-op
+- summary: The resolved light/dark state and the theme's chrome colors are reported to Rust so that OS-drawn title bars (and the Windows menu bar) match the in-app theme on Windows and Linux; on Windows 11 the title bar takes the theme's own colors.
+- capabilities: `syncNativeTheme(isDark, chrome)` sends only a real change (polarity or colors) across IPC and records delivery only on success, so a failure is retried on the next change; failures are swallowed so the app's own theming never breaks; Rust remembers the preference so windows opened later start with the right chrome; on Windows 11 (build 22000+) the caption, caption-text and border colors (`nativeChromeColors`: bg.primary, text.primary, border) are set through DWM, validated as `#RRGGBB` on every platform; macOS is a deliberate no-op
 - status: shipped-on, windows-linux-gap
 - gate: always on; `#[cfg(not(target_os = "macos"))]` does the work
 - surfaces: automatic (from the `useTheme` effect)
-- code: `src/services/theme/nativeTheme.ts`, `src/hooks/useTheme.ts`, `src-tauri/src/window_manager/native_theme.rs`
-- rust: `set_native_theme` (`src-tauri/src/window_manager/native_theme.rs`, still `Result<(), String>`)
+- code: `src/services/theme/nativeTheme.ts`, `src/theme/nativeChrome.ts`, `src/hooks/useTheme.ts`, `src-tauri/src/window_manager/native_theme.rs`
+- rust: `set_native_theme` (`src-tauri/src/window_manager/native_theme.rs`)
 - docs: none
-- tests: `src/services/theme/nativeTheme.test.ts`, `src-tauri/src/window_manager/native_theme.test.rs`, `src-tauri/src/window_manager/mod.test.rs`
-- notes: Known limitation recorded in `native_theme.rs`: the Windows menu bar goes dark only when the OS-wide app dark mode is on (muda gates on `should_apps_use_dark_mode()`), while the title bar always follows. The preference lives in a process-global `AtomicBool`, and the module header justifies the exception to the `.manage()` rule.
+- tests: `src/services/theme/nativeTheme.test.ts`, `src/theme/nativeChrome.test.ts`, `src/hooks/useTheme.nativeChrome.test.tsx`, `src-tauri/src/window_manager/native_theme.test.rs`, `src-tauri/src/window_manager/mod.test.rs`
+- notes: Known limitation recorded in `native_theme.rs`: the Windows menu bar goes dark only when the OS-wide app dark mode is on (muda gates on `should_apps_use_dark_mode()`), while the title bar always follows; the menu bar is light/dark only, never tinted. The preference lives in a process-global `AtomicBool`, and the module header justifies the exception to the `.manage()` rule.
 
 ### Editor typography and fonts
 - id: typography-fonts
