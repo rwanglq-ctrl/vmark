@@ -24,14 +24,14 @@ describe("syncNativeTheme", () => {
   it("delivers a changed palette and removes it when following the system is disabled", async () => {
     const colors = 'background="#0B1220"\nforeground="#E2E8F0"\naccent="#8FB8F0"\nselection="#1B2C4E"\nmuted="#566378"';
     setOmarchyAppearance(buildOmarchyAppearance(colors, "", { family: "Sans", points: 14 }));
-    await syncNativeTheme(true);
+    await syncNativeTheme(true, NIGHT);
     expect(invokeMock.mock.calls[0]?.[1]).toMatchObject({ appearance: { background: "#0B1220" } });
     setOmarchyAppearance(buildOmarchyAppearance(colors.replace("#0B1220", "#070C15"), "", { family: "Sans", points: 14 }));
-    await syncNativeTheme(true);
+    await syncNativeTheme(true, NIGHT);
     setOmarchyAppearance(null);
-    await syncNativeTheme(true);
+    await syncNativeTheme(true, NIGHT);
     expect(invokeMock).toHaveBeenCalledTimes(3);
-    expect(invokeMock).toHaveBeenLastCalledWith("set_native_theme", { dark: true });
+    expect(invokeMock).toHaveBeenLastCalledWith("set_native_theme", { dark: true, chrome: NIGHT });
   });
   it("reports a dark theme to the backend", async () => {
     await syncNativeTheme(true, NIGHT);
