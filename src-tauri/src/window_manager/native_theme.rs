@@ -250,7 +250,7 @@ pub async fn set_native_theme(
         let (sender, receiver) = tokio::sync::oneshot::channel();
         app.run_on_main_thread(move || {
             use gtk::prelude::*;
-            let result = (|| {
+            let result: Result<Option<SystemGuiFont>, String> = (|| {
                 let screen = gtk::gdk::Screen::default().ok_or("GTK screen unavailable")?;
                 let font = gtk::Settings::default()
                     .and_then(|s| s.gtk_font_name())
